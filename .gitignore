@@ -1,0 +1,19 @@
+
+/doc
+
+# modelsim
+transcript
+work/
+vsim_stacktrace.vstf
+vsim.wlf
+
+# c
+*.c
+*.o
+*.out
+
+# compile
+/Debug
+main
+*.dat
+
