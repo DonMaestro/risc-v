@@ -1,8 +1,25 @@
+/*
+//`include "src/register.v"
+//`include "src/mux2in1.v"
+`include "src/icache_m.v"
+`include "src/decode.v"
+`include "src/freelist.v"
+`include "src/rename.v"
+`include "src/rob.v"
+`include "src/busytb.v"
+`include "src/queue4in1.v"
+`include "src/queue4in2.v"
+`include "src/regfile4in8.v"
+`include "src/MemCalc.v"
+`include "src/alu.v"
+`include "src/executeBrmask.v"
+*/
+
 module core #(parameter ADDR_MEM_WIDTH = 32)
             (output [31:0] o_data,
-             output [ADDR_MEM_WIDTH - 1:0] o_addr1, o_addr2,
+             output [ADDR_MEM_WIDTH - 1:0] o_DcacheAddr, o_IcacheAddr,
              output   o_we,
-             input  [31:0] i_data1, i_data2,
+             input  [31:0] i_DcacheData, i_IcacheData,
              input    i_rst_n,
 	     input    i_clk);
 
@@ -19,13 +36,13 @@ wire [ 4:0] drs2[0:3];
 wire [19:0] dimm[0:3];
 
 wire [4*7-1:0] uop4x;
-wire [3*5-1]   rs[0:3];
-wire [3*WIDTH_PRD-1] prs[0:3];
+wire [3*5-1:0] rg[0:3];
+wire [3*WIDTH_PRD-1:0] prs[0:3];
 
 wire com_en;
 wire [WIDTH_PRD-1:0] com_prd[0:3];
 wire [WIDTH_PRD-1:0] freelist[0:3];
-wire [4*WIDTH_PRD-1:0] com_prd4x, old_prd4x, freelist4x;
+wire [4*WIDTH_PRD-1:0] com_prd4x, freelist4x;
 
 reg [4*WIDTH_PRD-1:0] rds, rs1, rs2;
 reg [4*20-1:0] imm;
@@ -47,64 +64,69 @@ wire [7-1:0] uop[0:3];
 wire [WIDTH_TAG-1:0] tag[0:3]; 
 
 // wire regFile
+wire [31:0] wDataMem;
+wire [WIDTH_PRD-1:0] wAddrMem;
+
+wire [3*WIDTH-1:0] waddr3x;
+wire [WIDTH-1:0] waddr[0:2];
+wire [WIDTH-1:0] instr[0:2];
+wire [31:0] DPS[0:5];
+wire [31:0] PRS1[0:2];
+wire [31:0] PRS2[0:2];
 
 // wire alu
 /* main block */
 
-register r_PC (.o_q(PC),
-               .i_en(w_PCWrite),
-               .i_d(Result),
-               .i_rst_n(rst_n),
-               .i_clk(clk));
-defparam mod_PC.RST_VALUE = 32'h0;
-
-mux2in1 mux_PC(.o_dat(Adr),
+mux2in1 mux_PC(.o_dat(newPC),
                .i_control(w_AdrSrc), 
-               .i_dat0(PC),
-               .i_dat1(Result)); 
+               .i_dat0(nextPC),
+               .i_dat1(rPC)); 
+
+register r_PC (PC, 1'b1, newPC, rst_n, clk);
 
 /* MEM */
 assign ReadData = i_data;
 assign o_we     = w_MemWrite;	
-assign o_addr   = Adr[ADDR_MEM_WIDTH-1:0];	
-assign o_data   = B;
 
+assign i_IcacheData = B;
+
+icache_m mod_icache(dataIC4x, o_IcacheAddr, PC);
+
+/*
 ram m_fetchBuff(.o_data(ReadData),
                 .i_we(), 
                 .i_data(B), 
                 .i_clk(clk));
+*/
 
+register r_instr(Packet, 1'b1, dataIC4x, rst_n, clk);
+
+//
 // Decode state
+//
+// rg = { drd, drs2, drs1 }
+//
+
 generate
 	genvar i;
+
+	assign { PCx, Inst4x, Imask } = Packet;
+
 	for (i = 0; i < 4; i = i + 1) begin
-		decode mod_decode(.o_drd   (drd[i]),
-		                  .o_funct3(funct3[i]),
-		                  .o_drs1  (drs1[i]),
-		                  .o_drs2  (drs2[i]),
-		                  .o_funct7(funct7[i]),
-		                  .o_imm   (dimm[i]),
-		                  .i_instr (instr[i]));
+		assign Instr[i] = Inst4x[(i+1)*32-1:i*32];
 
-		assign uop4x[(i+1)*7-1:i*7] = instr[i][6:0];
-		assign rs[i] = { drd[i], drs2[i], drs1[i] };
+		decode mod_decode(.o_regs (rg[i]),
+		                  .o_func (func[i]),
+		                  .o_ctrl (),
+		                  .o_imm  (dimm[i]),
+		                  .i_instr(Instr[i]),
+		                  .i_imask(Imask[i]));
 
-		freelist m_freelist(.o_data (freelist[i]),
-		                    .i_data (com_prd[i]),
-		                    .i_re   (enflist[i]),
-		                    .i_we   (com_en),
-		                    .i_rst_n(rst_n),
-		                    .i_clk  (clk));
-		defparam m_freelist.WIDTH = WIDTH_PRD - $log2(4);
-		defparam m_freelist.STNUM = i * (2^5);
-
-		assign com_prd[i] = com_prd4x[(i+1)*WIDTH_PRD-1:i*WIDTH_PRD];
-		assign freelist4x[(i+1)*WIDTH_PRD-1:i*WIDTH_PRD] = freelist[i];
-
-		assign { prd[i], prs2x[i] } = prgs[i];
+		assign uop4x[(i+1)*7-1:i*7] = Instr[i][6:0];
 	end
 endgenerate
 
+//
 // rename state
 //      
 // uop  tag  rd, rs2, rs1    rename1
@@ -115,6 +137,39 @@ endgenerate
 //
 // wire rd4x -> maptab -> wire prd4x_old -> rob
 //
+
+generate
+	genvar r;
+
+	freelist m_freelist[0](.o_data (freelist[0]),
+	                       .i_data (com_prd[0]),
+	                       .i_re   (enflist[0]),
+	                       .i_we   (com_en[0]),
+	                       .i_rst_n(rst_n),
+	                       .i_clk  (clk));
+	defparam m_freelist[0].WIDTH = WIDTH_PRD;
+	defparam m_freelist[0].SIZE  = $pow(2, WIDTH_PRD - 2) - 1;
+	defparam m_freelist[0].STNUM = 1;
+
+	for (r = 1; r < 4; r = r + 1) begin
+		freelist m_freelist[r](.o_data (freelist[r]),
+		                       .i_data (com_prd[r]),
+		                       .i_re   (enflist[r]),
+		                       .i_we   (com_en[r]),
+		                       .i_rst_n(rst_n),
+		                       .i_clk  (clk));
+		defparam m_freelist[r].WIDTH = WIDTH_PRD;
+		defparam m_freelist[r].SIZE = $pow(2, WIDTH_PRD - 2);
+		defparam m_freelist[r].STNUM = r * $pow(2, WIDTH_PRD - 2);
+	end
+
+	for (r = 0; r < 4; r = r + 1) begin
+		assign com_prd[r] = com_prd4x[(r+1)*WIDTH_PRD-1:r*WIDTH_PRD];
+		assign freelist4x[(r+1)*WIDTH_PRD-1:r*WIDTH_PRD] = freelist[i];
+
+		assign { prd[r], prs2x[r] } = prgs[r];
+	end
+endgenerate
 
 rename mod_rename(.o_prg1(prgs[0]),
                   .o_prg2(prgs[1]),
@@ -133,6 +188,7 @@ rename mod_rename(.o_prg1(prgs[0]),
 defparam mod_rename.WIDTH = WIDTH_PRD;
 
 // rob
+/*
 rob mod_rob(.o_dis_tag(tag4x),
             .o_com_prd4x(com_prd4x),
             .o_com_en(com_en),
@@ -147,6 +203,7 @@ rob mod_rob(.o_dis_tag(tag4x),
             .i_set4x_exctg();
             .i_rst_n(rst_n),
             .i_clk(clk));
+    */
 
 register r_1tag4x(rg1tag4x1, 1'b1, tag4x, rst_n, clk);
 defparam r_1tag4x.WIDTH = 4*3;
@@ -157,18 +214,18 @@ defparam r_1uop4x.WIDTH = 4*7;
 // busy table
 assign setBusy4x = { prd[3], prd[2], prd[1], prd[0] };
 
-budytable m_btab(.o_data1(p2x[0]),
-                 .o_data2(p2x[1]),
-                 .o_data3(p2x[2]),
-                 .o_data4(p2x[3]),
-                 .i_addr1(prs[0]),
-                 .i_addr2(prs[1]),
-                 .i_addr3(prs[2]),
-                 .i_addr4(prs[3]),
-                 .i_setAddr4x(setBusy4x),
-                 .i_rstAddr4x(wdest4x),
-                 .i_rst_n(i_rst_n),
-                 .i_clk(clk));
+busytb m_btab(.o_data1(p2x[0]),
+              .o_data2(p2x[1]),
+              .o_data3(p2x[2]),
+              .o_data4(p2x[3]),
+              .i_addr1(prs2x[0]),
+              .i_addr2(prs2x[1]),
+              .i_addr3(prs2x[2]),
+              .i_addr4(prs2x[3]),
+              .i_setAddr4x(setBusy4x),
+              .i_rstAddr4x(wdest4x),
+              .i_rst_n(i_rst_n),
+              .i_clk(clk));
 defparam m_btab.WIDTH = WIDTH_PRD;
 
 // queue state
@@ -227,31 +284,15 @@ register r_issue_mem(.o_q(InstMEM1x),
                      .i_clk(clk));
 defparam r_issue_mem.WIDTH = WIDTH_ISSUE;
 
-register r_issue_alu1(.o_q(InstALU2x),
-                      .i_en(1'b1),
-                      .i_d(),
-                      .i_rst_n(rst_n),
-                      .i_clk(clk));
-defparam r_issue_alu1.WIDTH = WIDTH_ISSUE;
+register r_issue_alu(.o_q(InstALU2x),
+                     .i_en(1'b1),
+                     .i_d(),
+                     .i_rst_n(rst_n),
+                     .i_clk(clk));
+defparam r_issue_alu.WIDTH = WIDTH_ISSUE;
 
-register r_issue_alu2(.o_q(InstALU2x),
-                      .i_en(1'b1),
-                      .i_d(),
-                      .i_rst_n(rst_n),
-                      .i_clk(clk));
-defparam r_issue_alu2.WIDTH = WIDTH_ISSUE;
 
 // reg state
-wire [31:0] wDataMem;
-wire [WIDTH_PRD-1:0] wAddrMem;
-
-wire [3*WIDTH-1:0] waddr3x;
-wire [WIDTH-1:0] waddr[0:2];
-wire [WIDTH-1:0] instr[0:2];
-wire [31:0] DPS[0:5];
-wire [31:0] PRS1[0:2];
-wire [31:0] PRS2[0:2];
-
 assign instr[0] = InstMEM1x;
 assign { instr[2], instr[1] } = InstALU2x;
 assign wdest4x = { {WIDTH_PRD{1'b0}}, PRD[2], PRD[1], PRD[0] };
@@ -274,63 +315,108 @@ regfile4in8 mod_regfile(.o_rdata0(DPS[0]),  .o_rdata1(DPS[1]),
                         .i_clk(clk));
 
 wire [31:0] Src[0:5];
-bypass m_bypassNetwork();
+//bypass m_bypassNetwork();
+
+assign instr[0] = { UOPCode[0], BrMask[0], func[0], imm[0], PRD[0], DPS[1], DPS[0] };
+assign instr[1] = { UOPCode[1], BrMask[1], func[0], imm[1], PRD[1], DPS[3], DPS[2] };
+assign instr[2] = { UOPCode[2], BrMask[2], func[0], imm[2], PRD[2], DPS[5], DPS[4] };
+
+always @(*)
+begin
+	case(ctrl[1])
+		2'b00: 
+	endcase
+
+	case(ctrl[2])
+	endcase
+end
+
+mux2in1 mux_alu0()
 
 // ALU
-MemCalc mod_MEM(.o_pdst(wAddrMem),
-                .o_data(wDataMem),
-                .o_we(we_mem),
-                .i_uop(),
-                .i_ctrl(),
-                .i_op1(Src[0]),
-                .i_op2(Src[1]),
-                .i_imm(simm[0]),
-                .i_clk(clk));
+MemCalc_m mod_mem(.o_data (wDataMem),
+                  .o_addr (wAddrMem),
+                  .o_valid(o_valid),
+                  .i_valid(valid),
+                  .i_uop  (UOPCode[0]),
+                  .i_func (func[0]),
+                  .i_addr (PRD[0]),
+                  .i_op1  (DPS[0]),
+                  .i_op2  (DPS[1]),
+                  .i_imm  (imm[0]),
+                  .i_rst_n(rst_n),
+                  .i_clk  (clk));
+defparam mod_mem.WIDTH = 4;
+defparam mod_mem.WIDTH_REG = WIDTH_REG;
 
-alu mod_ALU0(.o_rd(o_addr2),
-             .o_WBdata(o_data),
-             .o_read(we_mem),
-             .i_uop(),
-             .i_funct3(),
-             .i_op1(Src[0]),
-             .i_op2(Src[1]),
-             .i_imm(simm[0]),
-             .i_rst_n(rst_n),
-             .i_clk(clk));
+executeALU mod_ALU0(.o_addr(),
+                    .o_data(),
+                    .o_bypass(),    // { 1, WIDTH_PRD, 32 }
+                    .o_valid(),
+                    .i_valid(),
+                    .i_uop(),
+                    .i_func(),
+                    .i_addr(),
+                    .i_PC(),
+                    .i_op1(),
+                    .i_op2(),
+                    .i_imm(),
+                    .i_rst_n(rst_n),
+                    .i_clk(clk));
+defparam mod_ALU0.WIDTH_BRM = WIDTH_BRM;
+defparam mod_ALU0.WIDTH_REG = WIDTH_PRD;
 
-alu mod_ALU1(.o_rd(o_addr2),
-             .o_WBdata(o_data),
-             .o_read(we_mem),
-             .i_uop(),
-             .i_funct3(),
-             .i_op1(Src[0]),
-             .i_op2(Src[1]),
-             .i_imm(simm[0]),
-             .i_rst_n(rst_n),
-             .i_clk(clk));
+executeALU mod_ALU1(.o_addr(),
+                    .o_data(),
+                    .o_bypass(),    // { 1, WIDTH_PRD, 32 }
+                    .o_valid(),
+                    .i_valid(),
+                    .i_uop(),
+                    .i_func(),
+                    .i_addr(),
+                    .i_PC(),
+                    .i_op1(),
+                    .i_op2(),
+                    .i_imm(),
+                    .i_rst_n(rst_n),
+                    .i_clk(clk));
+defparam mod_ALU1.WIDTH_BRM = WIDTH_BRM;
+defparam mod_ALU1.WIDTH_REG = WIDTH_PRD;
 
-executeBrmask m_branch(.o_pdst(),
-                       .o_WBdata(),
-                       .o_bypass(),    // { 1, WIDTH_PRD, 32 }
-                       .o_valid(),
-                       .i_valid(),
-                       .i_uop(),
-                       .i_brmask(),
-                       .i_ctrl(),
-                       .i_op1(),
-                       .i_op2(),
-                       .i_rst_n(rst_n), 
-                       .i_clk(clk));
+
+executeBR  mod_BR(.o_brmask(),
+                  .o_brkill(),
+                  .o_we(),
+                  .o_PC(),
+                  .o_addr(),
+                  .o_data(),
+                  .o_valid(),
+                  .i_valid(),
+                  .i_uop(),
+                  .i_func(),
+                  .i_addr(),
+                  .i_PC(),
+                  .i_PCNext(),
+                  .i_brmask(),
+                  .i_op1(),
+                  .i_op2(),
+                  .i_imm(),
+                  .i_rst_n(rst_n),
+                  .i_clk(clk));
+defparam mod_BR.WIDTH_BRM = WIDTH_BRM;
+defparam mod_BR.WIDTH_REG = WIDTH_PRD;
 
 MulDiv mod_MulDiv(.o_rd(), 
                  .o_WBdata(o_data),
                  .o_read(we_mem),
                  .i_uop(),
                  .i_funct3(),
-                 .i_op1(Src[0]), i_op2(Src[1]),
+                 .i_op1(Src[0]),
+                 .i_op2(Src[1]),
                  .i_imm(simm[0]),    // or funct7
                  .i_rst_n(rst_n),
                  .i_clk(clk));
+
 
 mux2in1 m_mux( , , o_alu0, muldiv);
 mux2in1 m_mux( , , o_alu1, muldiv);
