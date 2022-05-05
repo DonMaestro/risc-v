@@ -1,31 +1,34 @@
 `include "src/register.v"
-module MemCalc_m #(parameter WIDTH = 4, WIDTH_REG = 5)
+module MemCalc_m #(parameter WIDTH_MEM = 4, WIDTH_BRM = 4, WIDTH_REG = 5,
+                             WIDTH = 4*32 + WIDTH_REG + WIDTH_BRM + 7 + 10)
                  (output [31:0]          o_data,
                   output [WIDTH_REG-1:0] o_addr,
                   output                 o_valid,
-                  input                  i_valid,
-                  input  [ 6:0]          i_uop,
-                  input  [ 9:0]          i_func,
-                  input  [WIDTH_REG-1:0] i_addr,
-                  input  [31:0]          i_op1, i_op2, i_imm,
+                  input  [WIDTH-1:0]     i_instr,
                   input                  i_rst_n,
                   input                  i_clk);
 
-localparam SIZE = $pow(2, WIDTH);
+localparam SIZE = $pow(2, WIDTH_MEM-1);
 localparam IT = 2'b01, ST = 2'b10, OT = 2'b00;
+
+//
+wire [31:0] pc;
 
 reg [1:0] FMT;
 
 reg [7:0] data[0:SIZE-1];
 
+wire [WIDTH-1:0] instr;
+
 wire [31:0] op1, op2, imm;
 wire [ 6:0] uop;
+wire [WIDTH_BRM-1:0] brmask;
 wire [ 9:0] func;
 wire        val;
 wire [WIDTH_REG-1:0] rd; // result register
 
-wire [31:0]      data_r;
-wire [WIDTH-1:0] addr;
+wire [31:0]          data_r;
+wire [WIDTH_MEM-1:0] addr;
 
 wire valOut;
 
@@ -34,14 +37,10 @@ begin
 	$readmemh("ram.dat", data);
 end
 
-register       r_pipeI_ADR(rd,   i_valid, i_addr,  i_rst_n, i_clk);
-register #(32) r_pipeI_OP1(op1,  i_valid, i_op1,   i_rst_n, i_clk);
-register #(32) r_pipeI_OP2(op2,  i_valid, i_op2,   i_rst_n, i_clk);
-register #(32) r_pipeI_IMM(imm,  i_valid, i_imm,   i_rst_n, i_clk);
-register #( 7) r_pipeI_UOP(uop,  i_valid, i_uop,   i_rst_n, i_clk);
-register #(10) r_pipeI_FNC(func, i_valid, i_func,  i_rst_n, i_clk);
-register #( 1) r_pipeI_VAL(val,  1'b1,    i_valid, i_rst_n, i_clk);
-defparam r_pipeI_ADR.WIDTH = WIDTH_REG;
+register r_pipeI(instr, 1'b1, i_instr, i_rst_n, i_clk);
+defparam r_pipeI.WIDTH = WIDTH;
+
+assign { val, func, brmask, uop, pc, imm, rd, op2, op1 } = instr;
 
 assign addr = op1 + imm;
 
