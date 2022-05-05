@@ -171,7 +171,7 @@ generate
 	end
 endgenerate
 
-rename mod_rename(.o_prg1(prgs[0]),
+rename m_rename(.o_prg1(prgs[0]),
                   .o_prg2(prgs[1]),
                   .o_prg3(prgs[2]),
                   .o_prg4(prgs[3]),
@@ -185,31 +185,31 @@ rename mod_rename(.o_prg1(prgs[0]),
                   .i_en(1'b1),
                   .i_rst_n(rst_n),
                   .i_clk(clk));
-defparam mod_rename.WIDTH = WIDTH_PRD;
+defparam m_rename.WIDTH = WIDTH_PRD;
 
 // rob
 /*
-rob mod_rob(.o_dis_tag(tag4x),
-            .o_com_prd4x(com_prd4x),
-            .o_com_en(com_en),
-            .i_dis_pc(PC),
-            .i_dis_uops4x(uop4x),
-            .i_dis_mask4x(),
-            .i_dis_prd4x(prdo4x),
-            .i_dis_data(data),
-            .i_dis_we(1'b1),
-            .i_rst4x_valtg();
-            .i_rst4x_busytg();
-            .i_set4x_exctg();
-            .i_rst_n(rst_n),
-            .i_clk(clk));
+rob m_rob(.o_dis_tag(tag4x),
+          .o_com_prd4x(com_prd4x),
+          .o_com_en(com_en),
+          .i_dis_pc(PC),
+          .i_dis_uops4x(uop4x),
+          .i_dis_mask4x(),
+          .i_dis_prd4x(prdo4x),
+          .i_dis_data(data),
+          .i_dis_we(1'b1),
+          .i_rst4x_valtg();
+          .i_rst4x_busytg();
+          .i_set4x_exctg();
+          .i_rst_n(rst_n),
+          .i_clk(clk));
     */
 
 register r_1tag4x(rg1tag4x1, 1'b1, tag4x, rst_n, clk);
 defparam r_1tag4x.WIDTH = 4*3;
 
 register r_1uop4x(rg1uop4x, 1'b1, uop4x, rst_n, clk);
-defparam r_1uop4x.WIDTH = 4*7;
+defpara m r_1uop4x.WIDTH = 4*7;
 
 // busy table
 assign setBusy4x = { prd[3], prd[2], prd[1], prd[0] };
@@ -244,38 +244,38 @@ generate
 	end
 endgenerate
 
-queue4in1 mod_issue_mem(.o_inst1(),
-                        .o_ready(),
-                        .i_inst1(issmem[0]),
-                        .i_inst2(issmem[1]),
-                        .i_inst3(issmem[2]),
-                        .i_inst4(issmem[3]),
-                        .i_wdest4x(wdest4x),
-                        .i_en(1'b1),
-                        .i_rst_n(rst_n),
-                        .i_clk(clk));
-defparam mod_issue_mem.WIDTH = WIDTH_ISSUE;
-defparam mod_issue_mem.WIDTH_REG = WIDTH_PRD;
-defparam mod_issue_mem.WIDTH_TAG = WIDTH_TAG;
-defparam mod_issue_mem.WIDTH_BRM = WIDTH_BRM;
-defparam mod_issue_mem.SIZE = 32;
+queue4in1 m_issue_mem(.o_inst1(),
+                      .o_ready(),
+                      .i_inst1(issmem[0]),
+                      .i_inst2(issmem[1]),
+                      .i_inst3(issmem[2]),
+                      .i_inst4(issmem[3]),
+                      .i_wdest4x(wdest4x),
+                      .i_en(1'b1),
+                      .i_rst_n(rst_n),
+                      .i_clk(clk));
+defparam m_issue_mem.WIDTH = WIDTH_ISSUE;
+defparam m_issue_mem.WIDTH_REG = WIDTH_PRD;
+defparam m_issue_mem.WIDTH_TAG = WIDTH_TAG;
+defparam m_issue_mem.WIDTH_BRM = WIDTH_BRM;
+defparam m_issue_mem.SIZE = 32;
 
-queue4in2 mod_issue_alu(.o_inst1(inst[0]),
-                        .o_inst2(inst[1]),
-                        .o_ready(),
-                        .i_inst1(issalu[0]),
-                        .i_inst2(issalu[1]),
-                        .i_inst3(issalu[2]),
-                        .i_inst4(issalu[3]),
-                        .i_wdest4x(wdest4x),
-                        .i_en(1'b1),
-                        .i_rst_n(rst_n),
-                        .i_clk(clk));
-defparam mod_issue_alu.WIDTH = WIDTH_ISSUE;
-defparam mod_issue_alu.WIDTH_REG = WIDTH_PRD;
-defparam mod_issue_alu.WIDTH_TAG = WIDTH_TAG;
-defparam mod_issue_alu.WIDTH_BRM = WIDTH_BRM;
-defparam mod_issue_alu.SIZE = 32;
+queue4in2 m_issue_alu(.o_inst1(inst[0]),
+                      .o_inst2(inst[1]),
+                      .o_ready(),
+                      .i_inst1(issalu[0]),
+                      .i_inst2(issalu[1]),
+                      .i_inst3(issalu[2]),
+                      .i_inst4(issalu[3]),
+                      .i_wdest4x(wdest4x),
+                      .i_en(1'b1),
+                      .i_rst_n(rst_n),
+                      .i_clk(clk));
+defparam m_issue_alu.WIDTH = WIDTH_ISSUE;
+defparam m_issue_alu.WIDTH_REG = WIDTH_PRD;
+defparam m_issue_alu.WIDTH_TAG = WIDTH_TAG;
+defparam m_issue_alu.WIDTH_BRM = WIDTH_BRM;
+defparam m_issue_alu.SIZE = 32;
 
 register r_issue_mem(.o_q(InstMEM1x),
                      .i_en(1'b1),
@@ -295,7 +295,6 @@ defparam r_issue_alu.WIDTH = WIDTH_ISSUE;
 // reg state
 assign instr[0] = InstMEM1x;
 assign { instr[2], instr[1] } = InstALU2x;
-assign wdest4x = { {WIDTH_PRD{1'b0}}, PRD[2], PRD[1], PRD[0] };
 assign waddr3x = { waddr2, waddr1, waddr0 };
 
 assign { UOPCode[0], BrMask[0], Tag[0], PRD[0], PRS2[0], PRS1[0] } = instr[0];
@@ -303,40 +302,37 @@ assign { UOPCode[1], BrMask[1], Tag[1], PRD[1], PRS2[1], PRS1[1] } = instr[1];
 assign { UOPCode[2], BrMask[2], Tag[2], PRD[2], PRS2[2], PRS1[2] } = instr[2];
 
 // register
-regfile4in8 mod_regfile(.o_rdata0(DPS[0]),  .o_rdata1(DPS[1]),
-                        .o_rdata2(DPS[2]),  .o_rdata3(DPS[3]),
-                        .o_rdata4(DPS[4]),  .o_rdata5(DPS[5]),
-                        .i_raddr0(PRS1[0]), .i_raddr1(PRS2[0]),
-                        .i_raddr2(PRS1[1]), .i_raddr3(PRS2[1]),
-                        .i_raddr4(PRS1[2]), .i_raddr5(PRS2[2]),
-                        .i_we0(we_mem), .i_we1(), .i_we2(), .i_we3(1'b0),
-                        .i_waddr0(wAddrMem), .i_waddr1(waddr1), .i_waddr2(waddr2),
-                        .i_wdata0(wDataMem), .i_wdata1, .i_wdata2,           
-                        .i_clk(clk));
+regfile4in8 m_regfile(.o_rdata0(DPS[0]),  .o_rdata1(DPS[1]),
+                      .o_rdata2(DPS[2]),  .o_rdata3(DPS[3]),
+                      .o_rdata4(DPS[4]),  .o_rdata5(DPS[5]),
+                      .i_raddr0(PRS1[0]), .i_raddr1(PRS2[0]),
+                      .i_raddr2(PRS1[1]), .i_raddr3(PRS2[1]),
+                      .i_raddr4(PRS1[2]), .i_raddr5(PRS2[2]),
+                      .i_we0(we_mem), .i_we1(), .i_we2(), .i_we3(1'b0),
+                      .i_waddr0(wAddrMem), .i_waddr1(waddr1), .i_waddr2(waddr2),
+                      .i_wdata0(wDataMem), .i_wdata1, .i_wdata2,           
+                      .i_clk(clk));
 
-wire [31:0] Src[0:5];
-//bypass m_bypassNetwork();
+bypass m_bypassNetwork(.o_mod0(mod_mem),
+                       .o_mod1(mod_alu0),
+                       .o_mod2(mod_alu1),
+                       .o_mod3(mod_br),
+                       .o_mod4(mod_mul),
+                       .i_instr0(instr[0]),
+                       .i_instr1(instr[1]),
+                       .i_instr2(instr[2]),
+                       .i_regFile0({ DPS[1], DPS[0] }),
+                       .i_regFile1({ DPS[3], DPS[2] }),
+                       .i_regFile2({ DPS[5], DPS[4] }),
+                       .i_regFile3({ 32'b0,  32'b0  }),
+                       .i_bypass());
+#(parameter WIDTH = 32, WIDTH_REG = 5)
 
-assign instr[0] = { UOPCode[0], BrMask[0], func[0], imm[0], PRD[0], DPS[1], DPS[0] };
-assign instr[1] = { UOPCode[1], BrMask[1], func[0], imm[1], PRD[1], DPS[3], DPS[2] };
-assign instr[2] = { UOPCode[2], BrMask[2], func[0], imm[2], PRD[2], DPS[5], DPS[4] };
+/* EXECUTION STATE */
 
-always @(*)
-begin
-	case(ctrl[1])
-		2'b00: 
-	endcase
-
-	case(ctrl[2])
-	endcase
-end
-
-mux2in1 mux_alu0()
-
-// ALU
 MemCalc_m mod_mem(.o_data (wDataMem),
                   .o_addr (wAddrMem),
-                  .o_valid(o_valid),
+                  .o_valid(we_mem),
                   .i_valid(valid),
                   .i_uop  (UOPCode[0]),
                   .i_func (func[0]),
@@ -349,6 +345,7 @@ MemCalc_m mod_mem(.o_data (wDataMem),
 defparam mod_mem.WIDTH = 4;
 defparam mod_mem.WIDTH_REG = WIDTH_REG;
 
+// ALU
 executeALU mod_ALU0(.o_addr(),
                     .o_data(),
                     .o_bypass(),    // { 1, WIDTH_PRD, 32 }
@@ -421,6 +418,8 @@ MulDiv mod_MulDiv(.o_rd(),
 mux2in1 m_mux( , , o_alu0, muldiv);
 mux2in1 m_mux( , , o_alu1, muldiv);
 //reg ALU->Result
+//
+assign wdest4x = { {WIDTH_PRD{1'b0}}, PRD[2], PRD[1], wAddrMem };
 
 endmodule
 
