@@ -7,9 +7,14 @@ reg clk;
 reg rst_n;
 
 localparam WIDTH_REG = 7;
+localparam WIDTH_BRM = 6;
+localparam WIDTH = 4*32 + WIDTH_REG + WIDTH_BRM + 7 + 10 + 1;
 
-reg [31:0] op1, op2, imm;
+wire [WIDTH-1:0] instr;
+
+reg [31:0] op1, op2, imm, pc;
 reg [6:0]  uop;
+reg [WIDTH_BRM-1:0] brmask;
 reg [9:0]  func;
 reg [WIDTH_REG-1:0]  rd;
 reg        valid;
@@ -20,20 +25,17 @@ wire        o_valid;
 
 wire [4:0] drd, drs1, drs2;
 
+assign instr = { valid, func, brmask, uop, pc, imm, rd, op2, op1 };
+
 MemCalc_m mod_mem(.o_data (o_data),
                   .o_addr (o_rd),
                   .o_valid(o_valid),
-                  .i_valid(valid),
-                  .i_uop  (uop),
-                  .i_func (func),
-                  .i_addr (rd),
-                  .i_op1  (op1),
-                  .i_op2  (op2),
-                  .i_imm  (imm),
+                  .i_instr(instr),
                   .i_rst_n(rst_n),
                   .i_clk  (clk));
-defparam mod_mem.WIDTH = 4;
+defparam mod_mem.WIDTH = WIDTH;
 defparam mod_mem.WIDTH_REG = WIDTH_REG;
+defparam mod_mem.WIDTH_BRM = WIDTH_BRM;
 
 initial
 begin
