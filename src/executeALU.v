@@ -2,24 +2,22 @@
 `include "src/mux3in1.v"
 `include "src/alu.v"
 
-module executeALU #(parameter WIDTH_BRM = 4, WIDTH_REG = 7)
+module executeALU #(parameter WIDTH_BRM = 4, WIDTH_REG = 7,
+                              WIDTH = 4*32 + WIDTH_REG + WIDTH_BRM + 7 + 10 + 1)
                   (output [WIDTH_REG-1:0]  o_addr,
                    output [31:0]           o_data,
                    output [32+WIDTH_REG:0] o_bypass,    // { 1, WIDTH_PRD, 32 }
                    output                  o_valid,
-                   input                   i_valid,
-                   input  [6:0]            i_uop,
-                   input  [9:0]            i_func,
-                   input  [WIDTH_REG-1:0]  i_addr,
-                   input  [31:0]           i_PC,
-                   input  [31:0]           i_op1, i_op2,
-                   input  [31:0]           i_imm,
+                   input  [WIDTH-1:0]      i_instr,
                    input                   i_rst_n, i_clk);
 
-wire [31:0] op1, op2, imm, PC;
-wire [ 6:0] uop;
-wire [ 9:0] func;
-wire        val;
+wire [WIDTH-1:0] instr;
+
+wire [31:0]          op1, op2, imm, PC;
+wire [ 6:0]          uop;
+wire [WIDTH_BRM-1:0] brmask;
+wire [ 9:0]          func;
+wire                 val;
 wire [WIDTH_REG-1:0] rd; // result register
 
 reg  [ 5:0] ctrl;
@@ -30,19 +28,12 @@ wire [31:0] result;
 
 wire valOut;
 
-register       r_pipeI_ADR(rd,   i_valid, i_addr,  i_rst_n, i_clk);
-register #(32) r_pipeI_PC (PC,   i_valid, i_PC,    i_rst_n, i_clk);
-register #(32) r_pipeI_OP1(op1,  i_valid, i_op1,   i_rst_n, i_clk);
-register #(32) r_pipeI_OP2(op2,  i_valid, i_op2,   i_rst_n, i_clk);
-register #(32) r_pipeI_IMM(imm,  i_valid, i_imm,   i_rst_n, i_clk);
-register #( 7) r_pipeI_UOP(uop,  i_valid, i_uop,   i_rst_n, i_clk);
-register #(10) r_pipeI_FNC(func, i_valid, i_func,  i_rst_n, i_clk);
-register #( 1) r_pipeI_VAL(val,  1'b1,    i_valid, i_rst_n, i_clk);
-defparam r_pipeI_ADR.WIDTH = WIDTH_REG;
+register r_pipeI(instr, 1'b1, i_instr, i_rst_n, i_clk);
+defparam r_pipeI.WIDTH = WIDTH;
+
+assign { val, func, brmask, uop, PC, imm, rd, op2, op1 } = instr;
 
 // Control
-//   alu
-//   WALU 
 always @(func)
 begin
 	ctrl[2:0] = func[2:0];

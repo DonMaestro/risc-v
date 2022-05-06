@@ -3,10 +3,17 @@
 
 module tb_executeALU;
 
+localparam WIDTH_REG = 7;
+localparam WIDTH_BRM = 4;
+localparam WIDTH = 4*32 + WIDTH_REG + WIDTH_BRM + 7 + 10 + 1;
+
+wire [WIDTH-1:0] instr;
+
 reg [31:0] op1, op2, imm, PC;
-reg [6:0] rd;
-reg [6:0] uop;
-reg [9:0] func;
+reg [WIDTH_BRM-1:0] brmask;
+reg [WIDTH_REG-1:0] rd;
+reg [6:0]  uop;
+reg [9:0]  func;
 reg valid;
 
 wire [31:0] o_data;
@@ -16,22 +23,18 @@ wire [32+7:0] o_bypass;
 
 reg rst_n, clk;
 
+assign instr = { valid, func, brmask, uop, PC, imm, rd, op2, op1 };
+
 executeALU  mod_ALU(.o_addr(o_addr),
                     .o_data(o_data),
                     .o_bypass(o_bypass),    // { 1, WIDTH_PRD, 32 }
                     .o_valid(o_valid),
-                    .i_valid(valid),
-                    .i_uop(uop),
-                    .i_func(func),
-                    .i_addr(rd),
-                    .i_PC(PC),
-                    .i_op1(op1),
-                    .i_op2(op2),
-                    .i_imm(imm),
+                    .i_instr(instr),
                     .i_rst_n(rst_n),
                     .i_clk(clk));
-defparam mod_ALU.WIDTH_BRM = 4;
-defparam mod_ALU.WIDTH_REG = 7;
+defparam mod_ALU.WIDTH_BRM = WIDTH_BRM;
+defparam mod_ALU.WIDTH_REG = WIDTH_REG;
+defparam mod_ALU.WIDTH = WIDTH;
 
 initial
 begin
