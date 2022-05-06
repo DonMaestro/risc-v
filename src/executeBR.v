@@ -3,7 +3,8 @@
 `include "src/comparator.v"
 `include "src/br.v"
 
-module executeBR #(parameter WIDTH_BRM = 4, WIDTH_REG = 7)
+module executeBR #(parameter WIDTH_BRM = 4, WIDTH_REG = 7,
+                             WIDTH = 4*32 + WIDTH_REG + WIDTH_BRM + 7 + 10 + 1)
                  (output [WIDTH_BRM-1:0]  o_brmask,
                   output                  o_brkill,
                   output [WIDTH_REG-1:0]  o_addr,
@@ -11,14 +12,11 @@ module executeBR #(parameter WIDTH_BRM = 4, WIDTH_REG = 7)
                   output                  o_we,
                   output [31:0]           o_PC,
                   output                  o_valid,
-                  input                   i_valid,
-                  input  [6:0]            i_uop,
-                  input  [9:0]            i_func,
-                  input  [WIDTH_REG-1:0]  i_addr,
-                  input  [31:0]           i_PC, i_PCNext,
-                  input  [WIDTH_BRM-1:0]  i_brmask,
-                  input  [31:0]           i_op1, i_op2, i_imm,
+                  input  [WIDTH-1:0]      i_instr,
+                  input  [31:0]           i_PCNext,
                   input                   i_rst_n, i_clk);
+
+wire [WIDTH-1:0] instr;
 
 wire [31:0] op1, op2, imm, PC;
 wire [ 6:0] uop;
@@ -39,18 +37,11 @@ wire [31:0] PC_new, rdDt;
 wire comp, brkill;
 wire valOut;
 
-register       r_pipeI_MBR(brmask, i_valid, i_brmask, i_rst_n, i_clk);
-register       r_pipeI_ADR(rd,     i_valid, i_addr,   i_rst_n, i_clk);
-register #(32) r_pipeI_PC (PC,     i_valid, i_PC,     i_rst_n, i_clk);
-register #(32) r_pipeI_PCN(PCNext, i_valid, i_PCNext, i_rst_n, i_clk);
-register #(32) r_pipeI_OP1(op1,    i_valid, i_op1,    i_rst_n, i_clk);
-register #(32) r_pipeI_OP2(op2,    i_valid, i_op2,    i_rst_n, i_clk);
-register #(32) r_pipeI_IMM(imm,    i_valid, i_imm,    i_rst_n, i_clk);
-register #( 7) r_pipeI_UOP(uop,    i_valid, i_uop,    i_rst_n, i_clk);
-register #(10) r_pipeI_FNC(func,   i_valid, i_func,   i_rst_n, i_clk);
-register #( 1) r_pipeI_VAL(val,    1'b1,    i_valid,  i_rst_n, i_clk);
-defparam r_pipeI_MBR.WIDTH = WIDTH_BRM;
-defparam r_pipeI_ADR.WIDTH = WIDTH_REG;
+register #(32) r_pipeI_PCN(PCNext, 1'b1, i_PCNext, i_rst_n, i_clk);
+register r_pipeI(instr, 1'b1, i_instr, i_rst_n, i_clk);
+defparam r_pipeI.WIDTH = WIDTH;
+
+assign { val, func, brmask, uop, PC, imm, rd, op2, op1 } = instr;
 
 // control
 always @(uop)
