@@ -1,6 +1,8 @@
 
 # RISC-V32 Processor
 
+![Core](docs/img/core.png)
+
 ## Dependancies
 ### Requirements
 
