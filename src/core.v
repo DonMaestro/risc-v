@@ -196,7 +196,7 @@ rob m_rob(.o_dis_tag(tag4x),
           .i_dis_uops4x(uop4x),
           .i_dis_mask4x(),
           .i_dis_prd4x(prdo4x),
-          .i_dis_data(data),
+          .i_dis_imm(data),
           .i_dis_we(1'b1),
           .i_rst4x_valtg();
           .i_rst4x_busytg();
