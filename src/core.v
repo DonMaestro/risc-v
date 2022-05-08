@@ -313,6 +313,7 @@ regfile4in8 m_regfile(.o_rdata0(DPS[0]),  .o_rdata1(DPS[1]),
                       .i_wdata0(wDataMem), .i_wdata1, .i_wdata2,           
                       .i_clk(clk));
 
+// instr = { CTRL, BRMASK, UOPCode, PC, IMM, RD, RS2, RS1 }
 bypass m_bypassNetwork(.o_mod0(mod_mem),
                        .o_mod1(mod_alu0),
                        .o_mod2(mod_alu1),
@@ -326,20 +327,16 @@ bypass m_bypassNetwork(.o_mod0(mod_mem),
                        .i_regFile2({ DPS[5], DPS[4] }),
                        .i_regFile3({ 32'b0,  32'b0  }),
                        .i_bypass());
-#(parameter WIDTH = 32, WIDTH_REG = 5)
+defparam m_bypassNetwork.WIDTH = 6 + WIDTH_BRM + 7 + 2 * 32 + 3 * WIDTH_PRD;
+defparam m_bypassNetwork.WIDTH_REG = WIDTH_PRD;
 
+localparam WIDTH_EXE = 6 + WIDTH_BRM + 7 + 4 * 32 + WIDTH_PRD;
 /* EXECUTION STATE */
 
 MemCalc_m mod_mem(.o_data (wDataMem),
                   .o_addr (wAddrMem),
                   .o_valid(we_mem),
-                  .i_valid(valid),
-                  .i_uop  (UOPCode[0]),
-                  .i_func (func[0]),
-                  .i_addr (PRD[0]),
-                  .i_op1  (DPS[0]),
-                  .i_op2  (DPS[1]),
-                  .i_imm  (imm[0]),
+                  .i_instr(mod_mem),
                   .i_rst_n(rst_n),
                   .i_clk  (clk));
 defparam mod_mem.WIDTH = 4;
@@ -350,16 +347,10 @@ executeALU mod_ALU0(.o_addr(),
                     .o_data(),
                     .o_bypass(),    // { 1, WIDTH_PRD, 32 }
                     .o_valid(),
-                    .i_valid(),
-                    .i_uop(),
-                    .i_func(),
-                    .i_addr(),
-                    .i_PC(),
-                    .i_op1(),
-                    .i_op2(),
-                    .i_imm(),
+                    .i_instr(mod_alu0),
                     .i_rst_n(rst_n),
                     .i_clk(clk));
+defparam mod_ALU0.WIDTH = WIDTH_EXE;
 defparam mod_ALU0.WIDTH_BRM = WIDTH_BRM;
 defparam mod_ALU0.WIDTH_REG = WIDTH_PRD;
 
@@ -367,16 +358,10 @@ executeALU mod_ALU1(.o_addr(),
                     .o_data(),
                     .o_bypass(),    // { 1, WIDTH_PRD, 32 }
                     .o_valid(),
-                    .i_valid(),
-                    .i_uop(),
-                    .i_func(),
-                    .i_addr(),
-                    .i_PC(),
-                    .i_op1(),
-                    .i_op2(),
-                    .i_imm(),
+                    .i_instr(mod_alu1),
                     .i_rst_n(rst_n),
                     .i_clk(clk));
+defparam mod_ALU1.WIDTH = WIDTH_EXE;
 defparam mod_ALU1.WIDTH_BRM = WIDTH_BRM;
 defparam mod_ALU1.WIDTH_REG = WIDTH_PRD;
 
@@ -388,35 +373,27 @@ executeBR  mod_BR(.o_brmask(),
                   .o_addr(),
                   .o_data(),
                   .o_valid(),
-                  .i_valid(),
-                  .i_uop(),
-                  .i_func(),
-                  .i_addr(),
-                  .i_PC(),
+                  .i_instr(mod_mul),
                   .i_PCNext(),
-                  .i_brmask(),
-                  .i_op1(),
-                  .i_op2(),
-                  .i_imm(),
                   .i_rst_n(rst_n),
                   .i_clk(clk));
+defparam mod_BR.WIDTH = WIDTH_EXE;
 defparam mod_BR.WIDTH_BRM = WIDTH_BRM;
 defparam mod_BR.WIDTH_REG = WIDTH_PRD;
 
+/*
 MulDiv mod_MulDiv(.o_rd(), 
                  .o_WBdata(o_data),
                  .o_read(we_mem),
-                 .i_uop(),
-                 .i_funct3(),
-                 .i_op1(Src[0]),
-                 .i_op2(Src[1]),
-                 .i_imm(simm[0]),    // or funct7
+                 .i_instr(mod_br),
                  .i_rst_n(rst_n),
                  .i_clk(clk));
+defparam mod_MulDiv.WIDTH = WIDTH_EXE;
 
 
 mux2in1 m_mux( , , o_alu0, muldiv);
 mux2in1 m_mux( , , o_alu1, muldiv);
+*/
 //reg ALU->Result
 //
 assign wdest4x = { {WIDTH_PRD{1'b0}}, PRD[2], PRD[1], wAddrMem };
