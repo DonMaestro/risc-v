@@ -1,124 +1,74 @@
-module rob(output [NBANK-1:0] o_tag,
-           input  [27:0]      i_dis_uops4,
-           input  [ 7:0]      i_dis_mask4,
-           input  [31:0]      i_pc,
-           input              i_we,
-	   input              i_rst_n,
-	   input              i_clk);
+module rob #(parameter WIDTH_REG = 7, WIDTH_BRM = 4)
+           (output [2:0]             o_dis_tag,
+            output [4*WIDTH_REG-1:0] o_com_prd4x,
+            output                   o_com_en,
+            input  [31:0]            i_dis_pc,
+            input  [27:0]            i_dis_uops4x,
+            input  [4*WIDTH_BRM-1:0] i_dis_mask4x,
+            input  [4*WIDTH_REG-1:0] i_dis_prd4x,
+            input  [4*32-1:0]        i_dis_imm,
+            input                    i_dis_we,
+            input  [3:0]             i_rst4x_valtg,
+            input  [3:0]             i_rst4x_busytg,
+            input  [3:0]             i_set4x_exctg,
+            input                    i_rst_n,
+            input                    i_clk);
 
 localparam NBANK = 4;
 
-localparam WIDTH = 20;
-localparam SIZE = 2^WIDTH;
+localparam WIDTH = 3 + 7 + WIDTH_BRM;
+localparam SIZE = $pow(2, 5) / 4;
 
 reg [31:0] pc[0:SIZE-1];
-reg [WIDTH-1:0] data[0:NBANK-1];
+wire [WIDTH-1:0] data[0:NBANK-1];
+wire [WIDTH-1:0] commit[0:NBANK-1];
 
-wire [6:0] dis_uops[0:NBANK-1]
-wire [1:0] dis_mask[0:NBANK-1]
+wire [6:0]           dis_uops[0:NBANK-1];
+wire [WIDTH_BRM-1:0] dis_mask[0:NBANK-1];
 
-assign { dis_uops[3], dis_uops[2], dis_uops[1], dis_uops[0] } = i_dis_uops4;
-assign { dis_mask[3], dis_mask[2], dis_mask[1], dis_mask[0] } = i_dis_mask4;
+wire commit_en, we;
 
-inst_bank m_pc_b(.o_data(commit[i]),
-                 .i_data(i_pc[31:2]),
-                 .i_re(commit_en),
-                 .i_we(we),
-                 .i_rst_n(i_rst_n),
-                 .i_clk(i_clk));
+assign { dis_uops[3], dis_uops[2], dis_uops[1], dis_uops[0] } = i_dis_uops4x;
+assign { dis_mask[3], dis_mask[2], dis_mask[1], dis_mask[0] } = i_dis_mask4x;
+
+assign commit_en = commit[3][WIDTH-1] & commit[2][WIDTH-1] & commit[1][WIDTH-1] & commit[0][WIDTH-1];
+assign we = i_dis_we;
+
+wire [31:2] gg;
+
+ringbuf m_pc_b(.o_data(gg),
+               .i_data(i_dis_pc[31:2]),
+               .i_re(commit_en),
+               .i_we(we),
+               .i_rst_n(i_rst_n),
+               .i_clk(i_clk));
 defparam m_pc_b.WIDTH = 32 - 2;
 defparam m_pc_b.SIZE = SIZE;
 
+/*
 generate
 	genvar i;
 	for (i = 0; i < NBANK; i = i + 1) begin
-		// val busy exc uopc brmask
-		assign data[i] = { 1'b1, 1'b1, 1'b0, dis_uopc[i], dis_mask[i] };
+		// val busy exc uops brmask
+		assign data[i] = { 1'b1, 1'b1, 1'b0, dis_uops[i], dis_mask[i] };
 
-		inst_bank m_inst_b(.o_data(commit[i]),
-		                   .i_data(data[i]),
-		                   .i_re(commit_en),
-		                   .i_we(we),
-		                   .i_rst_n(i_rst_n),
-		                   .i_clk(i_clk));
-		defparam m_inst_b[i].WIDTH = WIDTH;
-		defparam m_inst_b[i].SIZE = SIZE;
+		ringbuf m_inst_b(.o_data(commit[i]),
+		                 .i_data(data[i]),
+		                 .i_re(commit_en),
+		                 .i_we(we),
+		                 .i_rst_n(i_rst_n),
+		                 .i_clk(i_clk));
+		defparam m_inst_b.WIDTH = WIDTH;
+		defparam m_inst_b.SIZE = SIZE;
 	end
 endgenerate
+*/
 
-endmodule
-
-// Ring Buffer
-module inst_bank #(parameter WIDTH = 4, SIZE = 20)
-                 (output [WIDTH-1:0]      o_data,
-                  output [WIDTH_BANK-1:0] o_tag,
-                  input  [WIDTH-1:0]      i_data,
-                  input  i_rst_val, i_rst_busy, i_set_exc);
-                  input  i_we, i_rst_n, i_clk);
-
-localparam WIDTH_BANK = $clog2(SIZE);
-integer i;
-
-wire [SIZE-1:0] head, head_shift, tail, tail_shift;
-wire [SIZE-1:0] commit, we_dat;
-reg [WIDTH-1:0] data[0:SIZE-1];
-
-assign head_shift = head <<< 1;
-assign tail_shift = tail <<< 1;
-
-assign we_dat = tail & { SIZE{i_we} };
-assign commit = head & busy;
-
-generate
-	genvar i;
-	for (i = 0; i < SIZE; i = i + 1) begin
-		register #(1) r_head(.o_q(head[i]),
-		                     .i_d(head_shift[i]),
-		                     .i_en(i_re),
-		                     .i_rst_n(i_rst_n),
-		                     .i_clk(clk));
-
-		register #(1) r_tail(.o_q(tail[i]),
-		                     .i_d(tail_shift[i]),
-		                     .i_en(i_we),
-		                     .i_rst_n(i_rst_n),
-		                     .i_clk(clk));
-
-		reg_srst r_val(.o_q(val[i]),
-		               .i_d(i_data[WIDTH-1]),
-		               .i_en(we_dat[i]),
-		               .i_srst(commit[i]),
-		               .i_clk(clk));
-
-		reg_srst r_data(.o_q(data[i]),
-		                .i_d(i_data),
-		                .i_en(we_dat[i]),
-		                .i_srst(commit[i]),
-		                .i_clk(clk));
-		defparam r_data.WIDTH = WIDTH;
-	end
-endgenerate
-
-encoder m_encoder(.o_q(o_tag),
-                  .i_d(tail));
+/*
+encoder m_encoder(.o_q(o_dis_tag),
+                  .i_d(m_inst_b.tail));
 defparam m_encoder.SIZE = SIZE;
-
-assign o_data = data[head];
-
-endmodule
-
-module reg_srst #(parameter WIDTH = 32)
-                (output reg [WIDTH-1:0] o_q,
-                 input wire [WIDTH-1:0] i_d,
-                 input wire i_en, i_srst, i_clk);
-
-always @(posedge i_clk)
-begin
-	if (i_srst)
-		o_q <= { WIDTH{1'b0} };
-	else if (i_en)
-		o_q <= i_d;
-end
+*/
 
 endmodule
 
