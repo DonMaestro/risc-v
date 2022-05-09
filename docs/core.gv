@@ -1,23 +1,22 @@
 digraph Core {
-graph [dpi = 300]
+graph [dpi = 300 colorscheme = "set312"]
+node [shape = rect style = filled colorscheme = "set312"]
 rankdir = "TB"
 splines = ortho
-colorscheme = "pastel19"
+//colorscheme = "pastel19"
 
-node[shape = rect style = filled colorscheme = "pastel19"]
 
-subgraph cluster_execute {
-	label = "Execute"
-	graph [style = rounded]
+subgraph cluster_frontend {
+	graph [style = rounded labeljust = "l" label = "FrontEnd"]
+	bgcolor = 2;
 
-	//ROB
-	//busytb [label = "Busy Table"]
+	Icache [fillcolor = 8 width = 5]
 
 	subgraph cluster_decode {
-		label = "Decode 4x"
-		graph [style = ""]
-		node [label = "decode" fillcolor = 1 width = 1]
-		bgcolor = 1
+		
+		graph [style = "" labeljust = "c" label = "4-Way decode"]
+		node [label = "decode" fillcolor = 8 width = 1]
+		bgcolor = 12
 	
 		decode1
 		decode2
@@ -25,35 +24,62 @@ subgraph cluster_execute {
 		decode4
 	}
         
+	Icache -> { decode1 decode2 decode3 decode4}
+}
+
+subgraph cluster_execute {
+	graph [style = rounded labeljust = "l"]
+	label = "Execute"
+	bgcolor = 7;
+
+	//ROB
+	//busytb [label = "Busy Table"]
+
 	subgraph issue {
 		node [fillcolor = 3 width = 2]
 		issue_alu [label = "Issue queue ALU\n32 slots"]
 		issue_mem [label = "Issue queue MEM\n32 slots"]
 	}
         
-	rename [label = "Rename" fillcolor = 2 width = 5]
+	rename [label = "Rename Dispatch" fillcolor = 2 width = 5]
 	regfile [label = "Register file\n128 registers" fillcolor = 8 width = 5]
 
-	subgraph 0 {
-		node [fillcolor = 5 width = 1]
+	Bypass [shape = "invtrapezium" width = 6]
 
-		mem  [label = "CalcMEM"]
+	subgraph 0 {
+		node [fillcolor = 4 width = 1]
+
+		mul  [label = "Mul/Div"]
+		br   [label = "BR"]
 		alu1 [label = "ALU"]
 		alu2 [label = "ALU"]
-		br   [label = "BR"]
-		mul  [label = "Mul/Div"]
+		mem  [label = "CalcMEM"]
 	}
+
+	/*
+	subgraph cluster_mem {
+		graph [style = rounded labeljust = "l" label = "Memory"]
+		bgcolor = 3;
+		node [fillcolor = 12 width = 1]
+		MEMBuffer
+	}
+	*/
 	
 	//{rank = same; ROB; rename }
 	//{rank = same; busytb; issue_alu; issue_mem }
 	//{rank = same; issue_alu; issue_mem }
 	//{rank = same; mem; alu1; alu2; br; mul }
         
-	{ decode1 decode2 decode3 decode4 } -> rename
 	rename -> { issue_mem issue_alu }
-	{ issue_mem issue_alu } -> regfile
-	regfile -> { mem alu1 alu2 br mul }
+	issue_alu -> regfile
+	issue_alu -> regfile
+	issue_mem -> regfile
+	regfile -> Bypass
+	regfile -> Bypass
+	regfile -> Bypass
+	Bypass -> { mem alu1 alu2 br mul }
 }
 
+{ decode1 decode2 decode3 decode4 } -> rename
 }
 
