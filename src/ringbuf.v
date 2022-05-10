@@ -8,6 +8,8 @@ module ringbuf #(parameter WIDTH = 4, SIZE = 20)
                 //input  i_rst_val, i_rst_busy, i_set_exc,
                 input  i_re, i_we, i_rst_n, i_clk);
 
+localparam RST = 1 << (SIZE - 1);
+
 wire [SIZE:0] head, tail;
 wire [SIZE-1:0] commit, we_data;
 
@@ -16,7 +18,7 @@ wire [WIDTH-1:0] data[0:SIZE-1];
 assign head[0] = head[SIZE];
 assign tail[0] = tail[SIZE];
 assign we_data = tail & { SIZE{i_we} };
-assign commit  = head;
+assign commit  = head & { SIZE{i_re} };
 
 generate
 	genvar i;
@@ -26,40 +28,48 @@ generate
 		                     .i_en(i_re),
 		                     .i_rst_n(i_rst_n),
 		                     .i_clk(i_clk));
-		defparam r_head.RST_VALUE = !i;
+		defparam r_head.RST_VALUE = RST[i];
 
 		register #(1) r_tail(.o_q(tail[i+1]),
 		                     .i_d(tail[i]),
 		                     .i_en(i_we),
 		                     .i_rst_n(i_rst_n),
 		                     .i_clk(i_clk));
-		defparam r_tail.RST_VALUE = !i;
+		defparam r_tail.RST_VALUE = RST[i];
 
-		reg_srst r_data(.o_q(data[i]),
-		                .i_d(i_data),
-		                .i_en(we_data[i]),
-		                .i_srst(commit[i]),
-		                .i_clk(i_clk));
+		slot r_data(.o_q(o_data),
+		            .i_d(i_data),
+		            .i_re(head[i]),
+		            .i_we(we_data[i]),
+		            .i_srst(commit[i]),
+		            .i_clk(i_clk));
 		defparam r_data.WIDTH = WIDTH;
 	end
 endgenerate
 
-assign o_data = data[head];
-
 endmodule
 
-module reg_srst #(parameter WIDTH = 32)
-                (output reg [WIDTH-1:0] o_q,
-                 input wire [WIDTH-1:0] i_d,
-                 input wire i_en, i_srst, i_clk);
 
+/**
+ * slote
+ */
+module slot #(parameter WIDTH = 32)
+            (output [WIDTH-1:0] o_q,
+             input  [WIDTH-1:0] i_d,
+             input  i_re, i_we, i_srst, i_clk);
+
+reg [WIDTH-1:0] data;
+
+// read
+assign o_q = i_re ? data : { WIDTH{1'bZ} };
+
+// write
 always @(posedge i_clk)
 begin
 	if (i_srst)
-		o_q <= { WIDTH{1'b0} };
-	else if (i_en)
-		o_q <= i_d;
+		data <= { WIDTH{1'b0} };
+	else if (i_we)
+		data <= i_d;
 end
-
 endmodule
 
