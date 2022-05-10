@@ -30,7 +30,14 @@ begin
 	we = 1'b1;
 	data = 4'b1111;
 
-	#40 data = 4'b0000;
+	#360
+	re = 1'b1;
+	we = 1'b0;
+end
+
+always @(posedge clk)
+begin
+	data <= data + 1;
 end
 
 initial
