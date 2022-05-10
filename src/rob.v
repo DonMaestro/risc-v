@@ -17,7 +17,7 @@ module rob #(parameter WIDTH_REG = 7, WIDTH_BRM = 4)
 localparam NBANK = 4;
 
 localparam WIDTH = 3 + 7 + WIDTH_BRM;
-localparam SIZE = $pow(2, 5) / 4;
+localparam SIZE = 32 / NBANK;
 
 reg [31:0] pc[0:SIZE-1];
 wire [WIDTH-1:0] data[0:NBANK-1];
@@ -31,21 +31,20 @@ wire commit_en, we;
 assign { dis_uops[3], dis_uops[2], dis_uops[1], dis_uops[0] } = i_dis_uops4x;
 assign { dis_mask[3], dis_mask[2], dis_mask[1], dis_mask[0] } = i_dis_mask4x;
 
-assign commit_en = commit[3][WIDTH-1] & commit[2][WIDTH-1] & commit[1][WIDTH-1] & commit[0][WIDTH-1];
+assign o_com_en = commit[3][WIDTH-1] & commit[2][WIDTH-1] & commit[1][WIDTH-1] & commit[0][WIDTH-1];
 assign we = i_dis_we;
 
 wire [31:2] gg;
 
 ringbuf m_pc_b(.o_data(gg),
                .i_data(i_dis_pc[31:2]),
-               .i_re(commit_en),
+               .i_re(o_com_en),
                .i_we(we),
                .i_rst_n(i_rst_n),
                .i_clk(i_clk));
 defparam m_pc_b.WIDTH = 32 - 2;
 defparam m_pc_b.SIZE = SIZE;
 
-/*
 generate
 	genvar i;
 	for (i = 0; i < NBANK; i = i + 1) begin
@@ -54,7 +53,7 @@ generate
 
 		ringbuf m_inst_b(.o_data(commit[i]),
 		                 .i_data(data[i]),
-		                 .i_re(commit_en),
+		                 .i_re(o_com_en),
 		                 .i_we(we),
 		                 .i_rst_n(i_rst_n),
 		                 .i_clk(i_clk));
@@ -62,13 +61,14 @@ generate
 		defparam m_inst_b.SIZE = SIZE;
 	end
 endgenerate
-*/
 
-/*
+
+wire [SIZE-1:0] tail;
+assign tail = m_pc_b.tail;
+
 encoder m_encoder(.o_q(o_dis_tag),
-                  .i_d(m_inst_b.tail));
+                  .i_d(tail));
 defparam m_encoder.SIZE = SIZE;
-*/
 
 endmodule
 
