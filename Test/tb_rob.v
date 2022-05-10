@@ -9,9 +9,9 @@ module tb_rob;
 localparam WIDTH_REG = 7;
 localparam WIDTH_BRM = 4;
 
-wire [2:0]             tag;
-wire [4*WIDTH_REG-1:0] com_prd4x;
-wire                   com_en;
+wire [2:0]             o_tag;
+wire [4*WIDTH_REG-1:0] o_com_prd4x;
+wire                   o_com_en;
 reg             rst_n, clk;
  
 reg [31:0]            PC;
@@ -21,9 +21,9 @@ reg [4*WIDTH_REG-1:0] prd4x;
 reg [4*32-1:0]        imm4x;
 reg                   we;
 
-rob m_rob(.o_dis_tag(tag),
-          .o_com_prd4x(com_prd4x),
-          .o_com_en(com_en),
+rob m_rob(.o_dis_tag(o_tag),
+          .o_com_prd4x(o_com_prd4x),
+          .o_com_en(o_com_en),
           .i_dis_pc(PC),
           .i_dis_uops4x(uop4x),
           .i_dis_mask4x(brm4x),
@@ -45,12 +45,18 @@ begin
 
 	$display("gg %d", m_rob.we);
 
-	PC = 32'b0;
+	PC = 32'b1;
 	uop4x = { 7'h5, 7'h3, 7'h40, 7'h4f };
 	brm4x = { 4'b1000, 4'b0100, 4'b0010, 4'b0001 };
 	prd4x = { 7'h3, 7'h2, 7'h1, 7'h0 };
 	imm4x = { 32'hff, 32'hff00, 32'hff0000, 32'hff000000 };
 	we = 1'b1;
+end
+
+always @(posedge clk)
+begin
+	PC <= PC + 4;
+	brm4x <= brm4x + 16'h1111;
 end
 
 initial
