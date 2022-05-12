@@ -91,6 +91,57 @@ localparam WIDTH_DT = WIDTH - 1 - WIDTH_BRM;
 wire [WIDTH-1:0] data[0:SIZE-1];
 wire [SIZE-1:0]  clear, en_busy, rst_busy;
 
+// output
+
+/**
+ * kill logic
+ */
+
+
+/**
+ * clean busy bit
+ */
+assign rst_busy = 1 << i_rst_busy;
+
+generate
+	genvar i;
+	for (i = 0; i < SIZE; i = i + 1) begin
+		slot m_slot(.o_q    (brmask[i]),
+		            .i_d    (new_brmask),
+		            .i_en   (i_head[i]),
+		            .i_rst_n(i_rst_n),
+		            .i_clk  (i_clk));
+		defparam m_slot.WIDTH_REG = WIDTH_REG;
+		defparam m_slot.WIDTH_BRM = WIDTH_BRM;
+	end
+endgenerate
+
+// fun
+function brkill(input                 kill_en,
+                input [WIDTH_BRM-1:0] kill_mask, mask, last_mask);
+begin
+	brkill = 1'b0;
+	if (kill_en) begin
+		if (kill_mask < last_mask) begin // normal count
+			if (kill_mask < mask && mask <= last_mask)
+				brkill = 1'b1;
+		end
+		else begin // reset counter
+			if (kill_mask < mask || mask < last_mask)
+				brkill = 1'b1;
+		end
+	end
+end
+endfunction
+
+endmodule
+
+
+// slot
+module slot #(parameter  SIZE = 8, WIDTH_REG = 7, WIDTH_BRM = 4)
+            (output [WIDTH_DT-1:0] i_data, 
+             input                 i_rst_n, i_clk);
+
 wire new_val;
 wire [WIDTH_DT-1:0] new_data;
 wire [WIDTH_BRM-1:0] new_brmask;
@@ -108,69 +159,35 @@ assign new_val = i_data[WIDTH_DT-1];
 assign new_data = i_data[WIDTH_DT-2:WIDTH_BRM];
 assign new_brmask = i_data[WIDTH_BRM-1:0];
 
-// output
+assign clear = brkill(enkill, killmask, brmask[i], brmask[i]);
 
-/**
- * kill logic
- */
+assign en_busy = i_tail | rst_busy;
 
+register #(1) r_val(.o_q    (val),
+                    .i_d    (new_val),
+                    .i_en   (i_tail | clear),
+                    .i_rst_n(i_rst_n),
+                    .i_clk  (i_clk));
 
-/**
- * clean busy bit
- */
-assign rst_busy = 1 << i_rst_busy;
+register #(1) r_busy(.o_q    (busy),
+                     .i_d    (1'b1),
+                     .i_en   (i_head),
+                     .i_rst_n(i_rst_n),
+                     .i_clk  (i_clk));
 
-generate
-	genvar i;
-	for (i = 0; i < SIZE; i = i + 1) begin
-		assign clear[i] = brkill(enkill, killmask, brmask[i], brmask[i]);
+register r_data(.o_q    (data),
+                .i_d    (new_data),
+                .i_en   (i_tail),
+                .i_rst_n(i_rst_n),
+                .i_clk  (i_clk));
+defparam r_data.WIDTH = WIDTH_DT;
 
-		assign en_busy[i] = i_tail[i] | rst_busy[i];
-
-		register #(1) r_val(.o_q    (val[i]),
-		                    .i_d    (new_val),
-		                    .i_en   (i_tail[i] | clear[i]),
-		                    .i_rst_n(i_rst_n),
-		                    .i_clk  (i_clk));
-
-		register #(1) r_busy(.o_q    (busy[i]),
-		                     .i_d    (1'b1),
-		                     .i_en   (i_head[i]),
-		                     .i_rst_n(i_rst_n),
-		                     .i_clk  (i_clk));
-
-		register r_data(.o_q    (data[i]),
-		                .i_d    (new_data),
-		                .i_en   (i_tail[i]),
-		                .i_rst_n(i_rst_n),
-		                .i_clk  (i_clk));
-		defparam r_data.WIDTH = WIDTH_DT;
-
-		register r_brmask(.o_q    (brmask[i]),
-		                  .i_d    (new_brmask),
-		                  .i_en   (i_head[i]),
-		                  .i_rst_n(i_rst_n),
-		                  .i_clk  (i_clk));
-		defparam r_brmask.WIDTH = WIDTH_BRM;
-	end
-endgenerate
-
-function brkill(input                 kill_en,
-                input [WIDTH_BRM-1:0] kill_mask, mask, last_mask);
-begin
-	brkill = 1'b0;
-	if (kill_en) begin
-		if (kill_mask < last_mask) begin // normal count
-			if (kill_mask < mask && mask <= last_mask)
-				brkill = 1'b1;
-		end
-		else begin // reset counter
-			if (kill_mask < mask || mask < last_mask)
-				brkill = 1'b1;
-		end
-	end
-end
-endfunction
+register r_brmask(.o_q    (brmask),
+                  .i_d    (new_brmask),
+                  .i_en   (i_head),
+                  .i_rst_n(i_rst_n),
+                  .i_clk  (i_clk));
+defparam r_brmask.WIDTH = WIDTH_BRM;
 
 endmodule
 
