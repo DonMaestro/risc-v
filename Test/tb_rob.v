@@ -43,7 +43,7 @@ rob m_rob(.o_dis_tag(o_tag),
           .i_dis_pc(PC),
           .i_dis_data4x(data4x),
           .i_dis_we(we),
-          .i_rst4x_valtg(),
+          .i_kill({ (WIDTH_BRM+1){1'b0} }),
           .i_rst4x_busytg(),
           .i_rst_n(rst_n),
           .i_clk(clk));
