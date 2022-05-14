@@ -8,11 +8,13 @@ localparam WIDTH = 4;
 
 reg rst_n, clk;
 
-reg re, we;
+reg re, we, empty;
 reg  [WIDTH-1:0] data;
 wire [WIDTH-1:0] o_data;
+wire             o_empty;
 
 ringbuf m_ringbuf(.o_data(o_data),
+                  .o_empty(o_empty),
                   .i_data(data),
                   .i_re(re),
                   .i_we(we),
