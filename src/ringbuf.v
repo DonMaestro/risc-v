@@ -4,16 +4,21 @@
 //
 module ringbuf #(parameter WIDTH = 4, SIZE = 20)
                (output [WIDTH-1:0] o_data,
+                output             o_empty,
                 input  [WIDTH-1:0] i_data,
-                //input  i_rst_val, i_rst_busy, i_set_exc,
                 input  i_re, i_we, i_rst_n, i_clk);
 
-localparam RST = 1 << (SIZE - 1);
+localparam RST = { 1'b1, {(SIZE-1){1'b0}} };
+//localparam RST = 1;
 
 wire [SIZE:0] head, tail;
 wire [SIZE-1:0] commit, we_data;
 
 wire [WIDTH-1:0] data[0:SIZE-1];
+
+// output
+assign o_empty = |(head & tail);
+//assign overflow_before = |(head & (tail << 1));
 
 assign head[0] = head[SIZE];
 assign tail[0] = tail[SIZE];
