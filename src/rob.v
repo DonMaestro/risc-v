@@ -10,13 +10,18 @@ module rob #(parameter WIDTH_BANK = 3, WIDTH_REG = 7, WIDTH_BRM = 4,
             input  [4*WIDTH-1:0]      i_dis_data4x,
             input                     i_dis_we,
             input  [WIDTH_BRM:0]      i_kill,
-            input  [4*WIDTH_BANK-1:0] i_rst4x_busytg,
+            input  [3+WIDTH_BANK-1:0] i_rst_busy0,
+            input  [3+WIDTH_BANK-1:0] i_rst_busy1,
+            input  [3+WIDTH_BANK-1:0] i_rst_busy2,
+            input  [3+WIDTH_BANK-1:0] i_rst_busy3,
             input                     i_rst_n,
             input                     i_clk);
 
 localparam NBANK = 4;
 localparam WIDTH_DT = WIDTH - 2 - WIDTH_BRM;
 localparam integer SIZE = $pow(2, WIDTH_BANK);
+
+localparam integer WIDTH_RSTB = 1 + WIDTH_BANK + $clog2(NBANK);
 
 wire [WIDTH-1:0] new_data[0:NBANK-1];
 wire [WIDTH-1:0] commit[0:NBANK-1];
@@ -26,18 +31,21 @@ wire [WIDTH_BRM-1:0] dis_mask[0:NBANK-1];
 
 wire [WIDTH_REG-1:0] com_prd[0:NBANK-1];
 wire                 com_val[0:NBANK-1];
+wor  [SIZE-1:0]      rst_busy[0:NBANK-1];
 
 wire we, re;
 wire [SIZE-1:0] head, tail;
-
-assign re = ~com_val[3] & ~com_val[2] & ~com_val[1] & ~com_val[0];
-assign we = i_dis_we;
+wire empty;
 
 // output
 assign o_com_prd4x = { com_prd[3], com_prd[2], com_prd[1], com_prd[0] };
 assign o_com_en = re;
 
+assign re = ~empty & ~com_val[3] & ~com_val[2] & ~com_val[1] & ~com_val[0];
+assign we = i_dis_we;
+
 ringbuf m_pc_b(.o_data(),
+               .o_empty(empty),
                .i_data(i_dis_pc[31:2]),
                .i_re(re),
                .i_we(we),
@@ -54,8 +62,13 @@ generate
 	for (i = 0; i < NBANK; i = i + 1) begin
 		// val exc uops prd brmask
 		assign new_data[i] = i_dis_data4x[(i+1)*WIDTH-1:i*WIDTH];
-		assign com_val[i] = commit[i][WIDTH-1];
+		assign com_val[i] = commit[i][WIDTH-2];
 		assign com_prd[i] = commit[i][WIDTH_BRM+WIDTH_REG-1:WIDTH_BRM];
+
+		assign rst_busy[i] = rstBusy(i_rst_busy0, i[1:0]);
+		assign rst_busy[i] = rstBusy(i_rst_busy1, i[1:0]);
+		assign rst_busy[i] = rstBusy(i_rst_busy2, i[1:0]);
+		assign rst_busy[i] = rstBusy(i_rst_busy3, i[1:0]);
 
 		bank m_inst_b(.o_pkg(commit[i]),
 		              .i_pkg(new_data[i]),
@@ -64,7 +77,7 @@ generate
 	                      .i_killMask(i_kill),
 		              .i_re(re),
 		              .i_we(we),
-		              .i_rst_busy(),
+		              .i_rst_busy(rst_busy[i]),
 		              .i_rst_n(i_rst_n),
 		              .i_clk(i_clk));
 		defparam m_inst_b.SIZE      = SIZE;
@@ -74,6 +87,22 @@ generate
 		defparam m_inst_b.WIDTH     = WIDTH;
 	end
 endgenerate
+
+function [SIZE-1:0] rstBusy(
+	input [3+WIDTH_BANK-1:0]  i_rst_busytg,
+	input [$clog2(NBANK)-1:0] i_NBank);
+	reg                     en;
+	reg [WIDTH_BANK-1:0]    tag;
+	reg [$clog2(NBANK)-1:0] bank;
+	begin
+		rstBusy = { SIZE{1'b0} };
+		{ en, tag, bank } = i_rst_busytg;
+
+		if (i_NBank == bank && en)
+			rstBusy = 1 << tag;
+
+	end
+endfunction
 
 encoder m_encoder(.o_q(o_dis_tag),
                   .i_d(tail));
@@ -102,8 +131,12 @@ reg  [WIDTH-1:0]      pkg_head;
 wire                 killEn;
 wire [WIDTH_BRM-1:0] killMask;
 
+wire            rstEn;
+wire [SIZE-1:0] rstBusy;
+
 // output
 assign o_pkg = pkg_head;
+
 /**
  * kill logic
  */
