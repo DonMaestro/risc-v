@@ -1,5 +1,8 @@
 `timescale 1 ns / 10 ps
 `include "src/issue_slot.v"
+`include "src/mux2in1.v"
+`include "src/register.v"
+`include "src/comparator.v"
 
 module tb_issue_slot;
 

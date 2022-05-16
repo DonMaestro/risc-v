@@ -1,20 +1,3 @@
-/*
-//`include "src/register.v"
-//`include "src/mux2in1.v"
-`include "src/icache_m.v"
-`include "src/decode.v"
-`include "src/freelist.v"
-`include "src/rename.v"
-`include "src/rob.v"
-`include "src/busytb.v"
-`include "src/queue4in1.v"
-`include "src/queue4in2.v"
-`include "src/regfile4in8.v"
-`include "src/MemCalc.v"
-`include "src/alu.v"
-`include "src/executeBrmask.v"
-*/
-
 module core #(parameter ADDR_MEM_WIDTH = 32)
             (output [31:0] o_data,
              output [ADDR_MEM_WIDTH - 1:0] o_DcacheAddr, o_IcacheAddr,
@@ -141,26 +124,26 @@ endgenerate
 generate
 	genvar r;
 
-	freelist m_freelist[0](.o_data (freelist[0]),
-	                       .i_data (com_prd[0]),
-	                       .i_re   (enflist[0]),
-	                       .i_we   (com_en[0]),
-	                       .i_rst_n(rst_n),
-	                       .i_clk  (clk));
-	defparam m_freelist[0].WIDTH = WIDTH_PRD;
-	defparam m_freelist[0].SIZE  = $pow(2, WIDTH_PRD - 2) - 1;
-	defparam m_freelist[0].STNUM = 1;
+	freelist m_freelist(.o_data (freelist[0]),
+	                    .i_data (com_prd[0]),
+	                    .i_re   (enflist[0]),
+	                    .i_we   (com_en[0]),
+	                    .i_rst_n(rst_n),
+	                    .i_clk  (clk));
+	defparam m_freelist.WIDTH = WIDTH_PRD;
+	defparam m_freelist.SIZE  = $pow(2, WIDTH_PRD - 2) - 1;
+	defparam m_freelist.STNUM = 1;
 
 	for (r = 1; r < 4; r = r + 1) begin
-		freelist m_freelist[r](.o_data (freelist[r]),
-		                       .i_data (com_prd[r]),
-		                       .i_re   (enflist[r]),
-		                       .i_we   (com_en[r]),
-		                       .i_rst_n(rst_n),
-		                       .i_clk  (clk));
-		defparam m_freelist[r].WIDTH = WIDTH_PRD;
-		defparam m_freelist[r].SIZE = $pow(2, WIDTH_PRD - 2);
-		defparam m_freelist[r].STNUM = r * $pow(2, WIDTH_PRD - 2);
+		freelist m_freelist(.o_data (freelist[r]),
+		                    .i_data (com_prd[r]),
+		                    .i_re   (enflist[r]),
+		                    .i_we   (com_en[r]),
+		                    .i_rst_n(rst_n),
+		                    .i_clk  (clk));
+		defparam m_freelist.WIDTH = WIDTH_PRD;
+		defparam m_freelist.SIZE = $pow(2, WIDTH_PRD - 2);
+		defparam m_freelist.STNUM = r * $pow(2, WIDTH_PRD - 2);
 	end
 
 	for (r = 0; r < 4; r = r + 1) begin
@@ -206,7 +189,7 @@ register r_1tag4x(rg1tag4x1, 1'b1, tag4x, rst_n, clk);
 defparam r_1tag4x.WIDTH = 4*3;
 
 register r_1uop4x(rg1uop4x, 1'b1, uop4x, rst_n, clk);
-defpara m r_1uop4x.WIDTH = 4*7;
+defparam r_1uop4x.WIDTH = 4*7;
 
 // busy table
 assign setBusy4x = { prd[3], prd[2], prd[1], prd[0] };

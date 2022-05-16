@@ -1,5 +1,3 @@
-`include "src/issue_slot.v"
-
 module queue4in1 #(parameter SIZE = 32, WIDTH_REG = 5,
                              WIDTH_TAG = 5, WIDTH_BRM = 3,
                              WIDTH = 7 + WIDTH_BRM + WIDTH_TAG + 3*WIDTH_REG + 3)

@@ -1,4 +1,3 @@
-`include "src/register.v"
 module MemCalc_m #(parameter WIDTH_MEM = 4, WIDTH_BRM = 4, WIDTH_REG = 5,
                              WIDTH = 4*32 + WIDTH_REG + WIDTH_BRM + 7 + 10)
                  (output [31:0]          o_data,

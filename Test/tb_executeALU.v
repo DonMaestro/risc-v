@@ -1,5 +1,9 @@
 `timescale 1 ns / 1 ns
 `include "src/executeALU.v"
+`include "src/register.v"
+`include "src/mux3in1.v"
+`include "src/alu.v"
+
 
 module tb_executeALU;
 

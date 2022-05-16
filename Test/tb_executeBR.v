@@ -1,5 +1,9 @@
 `timescale 1 ns / 1 ns
 `include "src/executeBR.v"
+`include "src/register.v"
+`include "src/mux2in1.v"
+`include "src/comparator.v"
+`include "src/br.v"
 
 module tb_executeBR;
 

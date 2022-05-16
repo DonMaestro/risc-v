@@ -1,8 +1,3 @@
-`include "src/register.v"
-`include "src/mux2in1.v"
-`include "src/comparator.v"
-`include "src/br.v"
-
 module executeBR #(parameter WIDTH_BRM = 4, WIDTH_REG = 7,
                              WIDTH = 4*32 + WIDTH_REG + WIDTH_BRM + 7 + 10 + 1)
                  (output [WIDTH_BRM-1:0]  o_brmask,

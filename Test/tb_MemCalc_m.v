@@ -1,5 +1,6 @@
 `timescale 1 ns / 1 ns
 `include "src/MemCalc_m.v"
+`include "src/register.v"
 
 module tb_MemCalc_m;
 

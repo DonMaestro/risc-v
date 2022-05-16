@@ -1,7 +1,3 @@
-`include "src/register.v"
-`include "src/mux3in1.v"
-`include "src/alu.v"
-
 module executeALU #(parameter WIDTH_BRM = 4, WIDTH_REG = 7,
                               WIDTH = 4*32 + WIDTH_REG + WIDTH_BRM + 7 + 10 + 1)
                   (output [WIDTH_REG-1:0]  o_addr,

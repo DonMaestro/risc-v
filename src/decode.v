@@ -1,5 +1,3 @@
-`include "src/InstrDecoder.v"
-`include "src/signExtend.v"
 module decode(output reg [14:0] o_regs,
               output reg [ 9:0] o_func,
               output reg [ 4:0] o_ctrl,

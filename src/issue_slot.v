@@ -1,7 +1,4 @@
 // data = { UOPCode, BrMask, tag, RDst, RS2, RS1, val, p2, p1 }
-`include "src/mux2in1.v"
-`include "src/register.v"
-`include "src/comparator.v"
 
 module issue_slot #(parameter WIDTH_REG = 5, WIDTH_TAG = 5, WIDTH_BRM = 3,
                     WIDTH = 7 + WIDTH_BRM + WIDTH_TAG + 3*WIDTH_REG + 3)
