@@ -188,22 +188,19 @@ rename m_rename(.o_prg1(prgs[0]),
 defparam m_rename.WIDTH = WIDTH_PRD;
 
 // rob
-/*
-rob m_rob(.o_dis_tag(tag4x),
+rob m_rob(.o_dis_tag(tag),
           .o_com_prd4x(com_prd4x),
           .o_com_en(com_en),
           .i_dis_pc(PC),
-          .i_dis_uops4x(uop4x),
-          .i_dis_mask4x(),
-          .i_dis_prd4x(prdo4x),
-          .i_dis_imm(data),
+          .i_dis_data4x(data4x),
           .i_dis_we(1'b1),
-          .i_rst4x_valtg();
-          .i_rst4x_busytg();
-          .i_set4x_exctg();
+          .i_kill(), // { en, mask }
+          .i_rst_busy0(),
+          .i_rst_busy1(),
+          .i_rst_busy2(),
+          .i_rst_busy3(),
           .i_rst_n(rst_n),
           .i_clk(clk));
-    */
 
 register r_1tag4x(rg1tag4x1, 1'b1, tag4x, rst_n, clk);
 defparam r_1tag4x.WIDTH = 4*3;
