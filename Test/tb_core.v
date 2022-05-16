@@ -10,6 +10,7 @@
 `include "src/busytb.v"
 `include "src/queue4in1.v"
 `include "src/queue4in2.v"
+`include "src/queue_arbiter.v"
 `include "src/regfile4in8.v"
 `include "src/MemCalc.v"
 `include "src/alu.v"
