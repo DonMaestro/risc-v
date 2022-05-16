@@ -1,20 +1,37 @@
 `timescale 1 ns / 10 ps
 `include "src/core.v"
 `include "src/icache_m.v"
+
 `include "src/decode.v"
 `include "src/InstrDecoder.v"
 `include "src/signExtend.v"
+
 `include "src/freelist.v"
 `include "src/rename.v"
+
 `include "src/rob.v"
+`include "src/ringbuf.v"
+`include "src/encoder.v"
+
 `include "src/busytb.v"
+
 `include "src/queue4in1.v"
 `include "src/queue4in2.v"
+`include "src/issue_slot.v"
 `include "src/queue_arbiter.v"
 `include "src/regfile4in8.v"
-`include "src/MemCalc.v"
+
+`include "src/bypass.v"
+`include "src/demux1to4.v"
+
+`include "src/MemCalc_m.v"
+
+`include "src/executeALU.v"
 `include "src/alu.v"
+`include "src/mux3in1.v"
+
 `include "src/executeBR.v"
+`include "src/br.v"
 
 module tb_core();
 localparam WIDTH = 12;
