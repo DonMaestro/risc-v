@@ -126,7 +126,7 @@ module bank #(parameter SIZE = 32, WIDTH_DT = 39, WIDTH_REG = 7, WIDTH_BRM = 4,
 integer j;
 
 wire [WIDTH-1:0]      pkg[0:SIZE-1];
-reg  [WIDTH-1:0]      pkg_head;
+wor  [WIDTH-1:0]      pkg_head;
 
 wire                 killEn;
 wire [WIDTH_BRM-1:0] killMask;
@@ -146,6 +146,8 @@ assign killMask = i_killMask[WIDTH_BRM-1:0];
 generate
 	genvar i;
 	for (i = 0; i < SIZE; i = i + 1) begin
+		assign pkg_head = pkg[i];
+
 		bankSlot m_slot(.o_pkg(pkg[i]),
 		                .i_pkg(i_pkg),
 		                .i_killMask(killMask),
@@ -161,14 +163,6 @@ generate
 		defparam m_slot.WIDTH     = WIDTH;
 	end
 endgenerate
-
-always @(*)
-begin
-	pkg_head = { WIDTH{1'b0} };
-	for (j = 0; j < SIZE; j = j + 1) begin
-		pkg_head |= pkg[j];
-	end
-end
 
 endmodule
 
