@@ -7,14 +7,15 @@ localparam SIZE = $pow(2, WIDTH);
 
 reg [31:0] data[0:SIZE-1];
 
-wire [WIDTH-1:0] addr = i_addr & { {(WIDTH-2){1'b1}}, 2'b0 };
+//wire [WIDTH-1:0] addr = i_addr & { {(WIDTH-2){1'b1}}, 2'b0 };
+wire [WIDTH-1:0] addr = i_addr >> 2;
 
 initial
 begin
 	$readmemh("rom.dat", data);
 end
 
-assign o_data = data[addr];
+assign o_data = { data[addr+3], data[addr+2], data[addr+1], data[addr] };
 
 endmodule
 
