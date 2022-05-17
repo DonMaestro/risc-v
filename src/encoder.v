@@ -1,8 +1,6 @@
-module encoder #(parameter SIZE = 20)
+module encoder #(parameter SIZE = 20, WIDTH = $clog2(SIZE))
                (output reg [WIDTH-1:0] o_q,
                 input wire [SIZE-1 :0] i_d);
-
-localparam WIDTH = $clog2(SIZE);
 
 integer i, j;
 
