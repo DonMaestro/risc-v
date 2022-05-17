@@ -28,14 +28,16 @@ assign o_rdata7 = (!i_raddr7) ? 32'b0 : register[i_raddr7];
 
 always @(posedge i_clk)
 begin
-	if (i_we)
-	begin
+	if (i_we0)
 		register[i_waddr0] <= i_wdata0;
+	if (i_we1)
 		register[i_waddr1] <= i_wdata1;
+	if (i_we2)
 		register[i_waddr2] <= i_wdata2;
+	if (i_we3)
 		register[i_waddr3] <= i_wdata3;
+	if (i_we0 || i_we1 || i_we2 || i_we3)
 		$writememh("Debug/regiser_result.dat", register);
-	end
 end
 
 endmodule
