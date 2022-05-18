@@ -20,52 +20,53 @@ wire [31:0] PC, PCx;
 wire [4*32-1:0] dataIC4x;
 
 // wire decode
+wire            en_decode;
 wire [4*32-1:0] Inst4x;
-wire [5-1:0] ctrl;
 wire [  32-1:0] Instr[0:3];
+reg  [4-1:0]    Imask;
 
-wire [ 4:0] drd [0:3];
-wire [ 4:0] drs1[0:3];
-wire [ 4:0] drs2[0:3];
-wire [19:0] dimm[0:3];
-
-wire [4*7-1:0] uop4x;
-wire [3*5-1:0] rg[0:3];
-wire [10-1:0] func[0:3];
+wire [3*5-1:0]         rg[0:3];
+wire [10-1:0]          func[0:3];
+wire [5-1:0]           ctrl[0:3];
+wire [32-1:0]          imm[0:3];
+wire [4*7-1:0]         uop[0:3];
 wire [3*WIDTH_PRD-1:0] prs[0:3];
-reg [4-1:0] Imask;
 
-wire                 com_en;
-wire [3:0]           enflist;
-wire [WIDTH_PRD-1:0] com_prd[0:3];
-wire [WIDTH_PRD-1:0] freelist[0:3];
-wire [4*WIDTH_PRD-1:0] com_prd4x, freelist4x;
-wire [4*WIDTH_PRD-1:0] prdo4x;
-
-reg [4*WIDTH_PRD-1:0] rds, rs1, rs2;
-reg [4*20-1:0] imm;
+wire                   en_bm[0:4];
+wire [WIDTH_BRM-1:0]   brmask[0:4];
 
 // wire rename
+wire                   en_rename1, en_rename2;
 wire [WIDTH_TAG-1:0]   tagPkg; 
+
+wire [7-1:0]           uoprg1[0:3],    uoprg2[0:3];
+wire [10-1:0]          funcrg1[0:3],   funcrg2[0:3];
+wire [5-1:0]           ctrlrg1[0:3],   ctrlrg2[0:3];
+wire [32-1:0]          immrg1[0:3],    immrg2[0:3];
+wire [WIDTH_BRM-1:0]   brmaskrg1[0:3], brmaskrg2[0:3];
+wire [WIDTH_TAG-1:0]                   tagrg2;
+
 wire [3*WIDTH_PRD-1:0] prgs[0:3];
 wire [2*WIDTH_PRD-1:0] prs2x[0:3];
 wire [  WIDTH_PRD-1:0] prd[0:3];
 
-wire [4*7-1:0]       rg1uop4x;
-wire [WIDTH_TAG-1:0] rg1tag;
+wire                   com_en;
+wire [3:0]             enflist;
+wire [4*WIDTH_PRD-1:0] com_prd4x, freelist4x;
+wire [WIDTH_PRD-1:0]   freelist[0:3];
+wire [WIDTH_PRD-1:0]   com_prd[0:3];
+wire [4*WIDTH_PRD-1:0] prdo4x;
 
 // busy table
 wire [2-1:0]           p2x[0:3];
 wire [4*WIDTH_PRD-1:0] setBusy4x;
 
 wire                  val[0:3];
-wire [WIDTH_BRM-1:0]  brmask;
 
 // wire issue queue
 wire [WIDTH_ISSUE-1:0] issue[0:2];
-wire [WIDTH_ISSUE-1:0] issmem, issalu;
+wire [WIDTH_ISSUE-1:0] issmem[0:3], issalu[0:3];
 wire [2:0] valmem[0:3], valalu[0:3];
-wire [7-1:0]           uop[0:3];
 
 // wire regFile
 wire [7-1:0]         UOPCode;
@@ -111,6 +112,7 @@ ram m_fetchBuff(.o_data(ReadData),
 register r_instr(Inst4x, 1'b1, dataIC4x, rst_n, clk);
 defparam r_instr.WIDTH = 32 * 4;
 register r_PCx  (PCx, 1'b1, PC, rst_n, clk);
+register #(1) r_en_decode(en_decode, 1'b1, 1'b1, rst_n, clk);
 
 //
 // Decode state
@@ -128,6 +130,10 @@ begin
 	endcase
 end
 
+register #(1) r_en_j  (en_bm[0],  1'b1, en_bm[4],  rst_n, clk);
+register      r_brmask(brmask[0], 1'b1, brmask[4], rst_n, clk);
+defparam r_brmask.WIDTH = WIDTH_BRM;
+
 generate
 	genvar i;
 
@@ -137,11 +143,17 @@ generate
 		decode m_decode(.o_regs (rg[i]),
 		                .o_func (func[i]),
 		                .o_ctrl (ctrl[i]),
-		                .o_imm  (dimm[i]),
+		                .o_imm  (imm[i]),
+		                .o_en_j  (en_bm[i+1]),
+		                .o_brmask(brmask[i+1]),
+		                .i_en_j  (en_bm[i]),
+		                .i_brmask(brmask[i]),
+		                .i_en   (en_decode),
 		                .i_instr(Instr[i]),
 		                .i_imask(Imask[i]));
+		defparam m_decode.WIDTH_BRM = WIDTH_BRM;
 
-		assign uop4x[(i+1)*7-1:i*7] = Instr[i][6:0];
+		assign uop[i] = Instr[i][6:0];
 	end
 endgenerate
 
@@ -156,6 +168,9 @@ endgenerate
 //
 // wire rd4x -> maptab -> wire prd4x_old -> rob
 //
+
+//register #(1) r_en_rename1(en_rename1, 1'b1, en_decode, rst_n, clk);
+assign en_rename1 = en_decode;
 
 generate
 	genvar r;
@@ -188,6 +203,26 @@ generate
 
 		assign { prd[r], prs2x[r] } = prgs[r];
 	end
+
+	for (r = 0; r < 4; r = r + 1) begin
+		register #(10) r_funcrg1(funcrg1[r], en_rename1, func[r], rst_n, clk);
+		register #(5) r_ctrlrg1(ctrlrg1[r], en_rename1, ctrl[r], rst_n, clk);
+		register #(32) r_immrg1(immrg1[r], en_rename1, imm[r], rst_n, clk);
+		register r_brmaskrg1(brmaskrg1[r], en_rename1, brmask[r+1], rst_n, clk);
+		defparam r_brmaskrg1.WIDTH = WIDTH_BRM;
+		register #(7) r_uoprg1(uoprg1[r], en_rename1, uop[r], rst_n, clk);
+
+
+		register #(10) r_funcrg2(funcrg2[r], en_rename2, funcrg1[r], rst_n, clk);
+		register #(5) r_ctrlrg2(ctrlrg2[r], en_rename2, ctrlrg1[r], rst_n, clk);
+		register #(32) r_immrg2(immrg2[r], en_rename2, immrg1[r], rst_n, clk);
+		register r_brmaskrg2(brmaskrg2[r], en_rename1, brmaskrg1[r], rst_n, clk);
+		defparam r_brmaskrg2.WIDTH = WIDTH_BRM;
+		register #(7) r_uoprg2(uoprg2[r], en_rename2, uoprg1[r], rst_n, clk);
+		register r_tagrg2(tagrg2, en_rename2, tagPkg, rst_n, clk);
+		defparam r_tagrg2.WIDTH = WIDTH_TAG;
+
+	end
 endgenerate
 
 rename m_rename(.o_prg1(prgs[0]),
@@ -201,18 +236,22 @@ rename m_rename(.o_prg1(prgs[0]),
                 .i_rg3(rg[2]),
                 .i_rg4(rg[3]),
                 .i_freelist(freelist4x),
-                .i_en(1'b1),
+                .i_en(en_rename1),
                 .i_rst_n(rst_n),
                 .i_clk(clk));
 defparam m_rename.WIDTH_PRD = WIDTH_PRD;
 
+register #(1) r_en_rename2(en_rename2, 1'b1, en_rename1, rst_n, clk);
+//assign data4x = 
+
 // rob
+// dis_data = { val, uop, imm, prd, mask }
 rob m_rob(.o_dis_tag(tagPkg),
           .o_com_prd4x(com_prd4x),
           .o_com_en(com_en),
           .i_dis_pc(PC),
           .i_dis_data4x(data4x),
-          .i_dis_we(1'b1),
+          .i_dis_we(en_rename2),
           .i_kill(), // { en, mask }
           .i_rst_busy0(),
           .i_rst_busy1(),
@@ -223,12 +262,6 @@ rob m_rob(.o_dis_tag(tagPkg),
 defparam m_rob.WIDTH_BANK = WIDTH_TAG;
 defparam m_rob.WIDTH_REG  = WIDTH_PRD;
 defparam m_rob.WIDTH_BRM  = WIDTH_BRM;
-
-register r_1tag(rg1tag, 1'b1, tagPkg, rst_n, clk);
-defparam r_1tag.WIDTH = WIDTH_TAG;
-
-register r_1uop4x(rg1uop4x, 1'b1, uop4x, rst_n, clk);
-defparam r_1uop4x.WIDTH = 4*7;
 
 // busy table
 assign setBusy4x = { prd[3], prd[2], prd[1], prd[0] };
@@ -251,14 +284,13 @@ defparam m_btab.WIDTH = WIDTH_PRD;
 generate
 	genvar j;
 	for (j = 0; j < 4; j = j + 1) begin
-		assign uop[j] = rg1uop4x[(j+1)*7-1:j*7];
 
 		// valxxx = { val, p2, p1 }
-		assign valmem[j] = { ~val[j], ~p2x[j] };
-		assign valalu[j] = {  val[j], ~p2x[j] };
+		assign valmem[j] = { ctrlrg2[j][1], ~p2x[j] };
+		assign valalu[j] = { ctrlrg2[j][2], ~p2x[j] };
 		// issue_slot = { UOPcode, brmask, tag, prd, prs2, prs1, val, p2, p1 };
-		assign issmem[j] = { uop[j], brmask, rg1tag, prgs[j], valmem[j] };
-		assign issalu[j] = { uop[j], brmask, rg1tag, prgs[j], valalu[j] };
+		assign issmem[j] = { uoprg2[j], brmaskrg2[j], tagrg2, prgs[j], valmem[j] };
+		assign issalu[j] = { uoprg2[j], brmaskrg2[j], tagrg2, prgs[j], valalu[j] };
 	end
 endgenerate
 
@@ -269,7 +301,7 @@ queue4in1 m_issue_mem(.o_inst1(issue[0]),
                       .i_inst3(issmem[2]),
                       .i_inst4(issmem[3]),
                       .i_wdest4x(wdest4x),
-                      .i_en(1'b1),
+                      .i_en(en_rename2),
                       .i_rst_n(rst_n),
                       .i_clk(clk));
 defparam m_issue_mem.WIDTH = WIDTH_ISSUE;
@@ -287,7 +319,7 @@ queue4in2 m_issue_alu(.o_inst1(issue[1]),
                       .i_inst3(issalu[2]),
                       .i_inst4(issalu[3]),
                       .i_wdest4x(wdest4x),
-                      .i_en(1'b1),
+                      .i_en(en_rename2),
                       .i_rst_n(rst_n),
                       .i_clk(clk));
 defparam m_issue_alu.WIDTH = WIDTH_ISSUE;
