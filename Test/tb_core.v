@@ -1,4 +1,4 @@
-`timescale 1 ns / 10 ps
+`timescale 1 ns / 1 ns 
 `include "src/core.v"
 `include "src/icache_m.v"
 
@@ -33,29 +33,24 @@
 `include "src/executeBR.v"
 `include "src/br.v"
 
-module tb_core();
+module tb_core;
 localparam WIDTH = 12;
 
-wire [WIDTH - 1:0] addr;
-wire [31:0] data_mem_core, data_core_mem;
+wire [WIDTH-1:0] addrD, addrI;
+wire [31:0] data_dcache, data_icache;
+wire [31:0] data_core_mem;
 wire we;
-reg	clk;
-reg	rst_n;
+reg clk, rst_n;
 
 /* Core */
 core #(WIDTH) m_core(.o_we(we),
-            .o_addr(addr),
-            .o_data(data_core_mem),
-            .i_data(data_mem_core),
-            .rst_n(rst_n),
-	    .clk(clk));
-
-/* MEM */
-ram #(WIDTH) m_ram(.o_data(data_mem_core),
-          .i_we(we), 
-          .i_addr(addr), 
-          .i_data(data_core_mem), 
-          .i_clk(clk));
+                     .o_DcacheAddr(addrD),
+                     .o_IcacheAddr(addrI),
+                     .o_data(data_core_mem),
+                     .i_DcacheData(data_dcache),
+                     .i_IcacheData(data_icache),
+                     .i_rst_n(rst_n),
+                     .i_clk(clk));
 
 initial begin
 	rst_n = 1;
