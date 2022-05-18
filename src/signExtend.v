@@ -2,12 +2,7 @@ module signExtend(output reg [31:0] o_data,
                   input      [ 2:0] i_en,
                   input      [31:7] i_data);
 
-localparam [2:0] RT = 3'd0,
-                 IT = 3'd1,
-                 ST = 3'd2,
-                 BT = 3'd3,
-                 UT = 3'd4,
-                 JT = 3'd5;
+`include "src/IType.v"
 
 always @(*)
 begin
