@@ -59,7 +59,7 @@ assign tail = m_pc_b.tail;
 
 generate
 	genvar i;
-	for (i = 0; i < NBANK; i = i + 1) begin
+	for (i = 0; i < NBANK; i = i + 1) begin: bank
 		// val exc uops prd brmask
 		assign new_data[i] = i_dis_data4x[(i+1)*WIDTH-1:i*WIDTH];
 		assign com_val[i] = commit[i][WIDTH-2];
@@ -145,7 +145,7 @@ assign killMask = i_killMask[WIDTH_BRM-1:0];
 
 generate
 	genvar i;
-	for (i = 0; i < SIZE; i = i + 1) begin
+	for (i = 0; i < SIZE; i = i + 1) begin: slot
 		assign pkg_head = pkg[i];
 
 		bankSlot m_slot(.o_pkg(pkg[i]),

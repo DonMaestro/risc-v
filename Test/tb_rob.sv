@@ -4,6 +4,8 @@
 `include "src/rob.v"
 `include "src/encoder.v"
 
+`include "Test/interface.sv"
+
 module tb_rob;
 
 integer i;
@@ -59,6 +61,9 @@ rob m_rob(.o_dis_tag(o_tag),
 defparam m_rob.WIDTH_BANK = WIDTH_BANK;
 defparam m_rob.WIDTH_REG  = WIDTH_REG;
 defparam m_rob.WIDTH_BRM  = WIDTH_BRM;
+
+`define ROB m_rob
+`include "Test/printROB.sv"
 
 initial
 begin
