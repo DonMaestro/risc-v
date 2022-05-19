@@ -50,12 +50,16 @@ wire [3*WIDTH_PRD-1:0] prgs[0:3];
 wire [2*WIDTH_PRD-1:0] prs2x[0:3];
 wire [  WIDTH_PRD-1:0] prd[0:3];
 
+wire [m_rob.WIDTH-1:0]   pkg_rob[0:3];
+wire [4*m_rob.WIDTH-1:0] data4x;
+
 wire                   com_en;
 wire [3:0]             enflist;
 wire [4*WIDTH_PRD-1:0] com_prd4x, freelist4x;
 wire [WIDTH_PRD-1:0]   freelist[0:3];
 wire [WIDTH_PRD-1:0]   com_prd[0:3];
 wire [4*WIDTH_PRD-1:0] prdo4x;
+wire [WIDTH_PRD-1:0]   prdo[0:3];
 
 // busy table
 wire [2-1:0]           p2x[0:3];
@@ -64,6 +68,7 @@ wire [4*WIDTH_PRD-1:0] setBusy4x;
 wire                  val[0:3];
 
 // wire issue queue
+wire                   en_queue;
 wire [WIDTH_ISSUE-1:0] issue[0:2];
 wire [WIDTH_ISSUE-1:0] issmem[0:3], issalu[0:3];
 wire [2:0] valmem[0:3], valalu[0:3];
@@ -211,7 +216,10 @@ generate
 		register r_brmaskrg1(brmaskrg1[r], en_rename1, brmask[r+1], rst_n, clk);
 		defparam r_brmaskrg1.WIDTH = WIDTH_BRM;
 		register #(7) r_uoprg1(uoprg1[r], en_rename1, uop[r], rst_n, clk);
-
+ 
+		assign prdo[r] = prdo4x[(r+1)*WIDTH_PRD-1:r*WIDTH_PRD];
+		assign pkg_rob[r] = {ctrlrg1[r][0], 1'b1, uoprg1[r], immrg1[r], prdo[r], brmaskrg1[r] };
+		assign data4x[(r+1)*m_rob.WIDTH-1:r*m_rob.WIDTH] = pkg_rob[r];
 
 		register #(10) r_funcrg2(funcrg2[r], en_rename2, funcrg1[r], rst_n, clk);
 		register #(5) r_ctrlrg2(ctrlrg2[r], en_rename2, ctrlrg1[r], rst_n, clk);
@@ -242,7 +250,6 @@ rename m_rename(.o_prg1(prgs[0]),
 defparam m_rename.WIDTH_PRD = WIDTH_PRD;
 
 register #(1) r_en_rename2(en_rename2, 1'b1, en_rename1, rst_n, clk);
-//assign data4x = 
 
 // rob
 // dis_data = { val, uop, imm, prd, mask }
@@ -281,6 +288,9 @@ busytb m_btab(.o_data1(p2x[0]),
 defparam m_btab.WIDTH = WIDTH_PRD;
 
 // queue state
+
+register #(1) r_en_en_queue(en_queue, 1'b1, en_rename2, rst_n, clk);
+
 generate
 	genvar j;
 	for (j = 0; j < 4; j = j + 1) begin
@@ -301,7 +311,7 @@ queue4in1 m_issue_mem(.o_inst1(issue[0]),
                       .i_inst3(issmem[2]),
                       .i_inst4(issmem[3]),
                       .i_wdest4x(wdest4x),
-                      .i_en(en_rename2),
+                      .i_en(en_queue),
                       .i_rst_n(rst_n),
                       .i_clk(clk));
 defparam m_issue_mem.WIDTH = WIDTH_ISSUE;
@@ -319,7 +329,7 @@ queue4in2 m_issue_alu(.o_inst1(issue[1]),
                       .i_inst3(issalu[2]),
                       .i_inst4(issalu[3]),
                       .i_wdest4x(wdest4x),
-                      .i_en(en_rename2),
+                      .i_en(en_queue),
                       .i_rst_n(rst_n),
                       .i_clk(clk));
 defparam m_issue_alu.WIDTH = WIDTH_ISSUE;
