@@ -36,31 +36,31 @@ assign o_ready1 = ~empty[0];
 assign o_ready2 = ~empty[1];
 
 generate
-	for (i = 0; i < LENGTH; i = i + 1) begin
-		for (j = 0; j < 2; j = j + 1) begin
-			issue_slot mod_slot(.o_request(request[j][i]),
-			                    .o_rslot(grant_data[j]),
-			                    .o_data(data[j][i]),
-			                    .i_data(data[j][i+2]),
-			                    .i_WDest4x(i_wdest4x),
-			                    .i_BrKill(i_BrKill),
-			                    .i_grant(grant[j][i]),
-			                    .i_en(i_en),
-			                    .i_rst_n(i_rst_n),
-			                    .i_clk(i_clk));
-			defparam mod_slot.WIDTH_REG = WIDTH_REG;
-			defparam mod_slot.WIDTH_TAG = WIDTH_TAG;
-			defparam mod_slot.WIDTH_BRM = WIDTH_BRM;
+	for (i = 0; i < LENGTH; i = i + 1) begin: slot
+		for (j = 0; j < 2; j = j + 1) begin: out
+			issue_slot m_slot(.o_request(request[j][i]),
+			                  .o_rslot(grant_data[j]),
+			                  .o_data(data[j][i]),
+			                  .i_data(data[j][i+2]),
+			                  .i_WDest4x(i_wdest4x),
+			                  .i_BrKill(i_BrKill),
+			                  .i_grant(grant[j][i]),
+			                  .i_en(i_en),
+			                  .i_rst_n(i_rst_n),
+			                  .i_clk(i_clk));
+			defparam m_slot.WIDTH_REG = WIDTH_REG;
+			defparam m_slot.WIDTH_TAG = WIDTH_TAG;
+			defparam m_slot.WIDTH_BRM = WIDTH_BRM;
 
 		end
 
         end
 
 	for (i = 0; i < 2; i = i + 1) begin
-		queue_arbiter mod_arbiters(.o_grant(grant[i]),
-		                           .o_empty(empty[i]),
-		                           .i_request(request[i]));
-		defparam mod_arbiters.WIDTH = LENGTH;
+		queue_arbiter m_arbiters(.o_grant(grant[i]),
+		                         .o_empty(empty[i]),
+		                         .i_request(request[i]));
+		defparam m_arbiters.WIDTH = LENGTH;
 	end
 endgenerate
 
