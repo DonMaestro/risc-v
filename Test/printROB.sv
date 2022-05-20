@@ -26,13 +26,6 @@ for (ibk = 0; ibk < PROB_W_NBANK; ibk++) begin
 	end
 end
 
-always @(posedge clk)
-begin
-	$display("time: %d", $realtime);
-	printROB(rb);
-	$display;
-end
-
 task printROB(virtual robtable #(46, 3) rb[0:3][0:7]);
 int i, j;
 begin

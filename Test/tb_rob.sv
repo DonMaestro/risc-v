@@ -65,6 +65,13 @@ defparam m_rob.WIDTH_BRM  = WIDTH_BRM;
 `define ROB m_rob
 `include "Test/printROB.sv"
 
+always @(posedge clk)
+begin
+	$display("time: %d", $realtime);
+	printROB(rb);
+	$display;
+end
+
 initial
 begin
 	rst_n = 1'b0;

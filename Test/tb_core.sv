@@ -59,13 +59,18 @@ core #(WIDTH) m_core(.o_we(we),
 `define ROB m_core.m_rob
 `include "Test/printROB.sv"
 
-`define QUE m_core.m_issue_alu
+`define QUE1 m_core.m_issue_mem
+`define QUE2 m_core.m_issue_alu
 `include "Test/printQUE.sv"
 
 always @(posedge clk)
 begin
 	$display("time: %d", $realtime);
-	printQUE(qi);
+	printROB(rb);
+	$display("queue MEM");
+	printQUE1(qi1);
+	$display("queue ALU");
+	printQUE2(qi2);
 	$display;
 end
 initial begin
