@@ -2,9 +2,9 @@
 // instr = { CTRL, BRMASK, UOPCode, PC, IMM, RD, RS2, RS1 }
 // CTRL = { ENMOD, FUNC }
 module bypass #(parameter WIDTH = 32, WIDTH_REG = 5)
-              (output [WIDTH-1:0] o_mod0, o_mod1, o_mod2, o_mod3, o_mod4,
-               input  [WIDTH-1:0] i_instr0, i_instr1, i_instr2,
-               input  [2*32-1:0]  i_regFile0, i_regFile1, i_regFile2, i_regFile3,
+              (output [WIDTH-1:0]     o_mod0, o_mod1, o_mod2, o_mod3, o_mod4,
+               input  [WIDTH-64-1:0]  i_instr0, i_instr1, i_instr2, //without RS2 and RS1
+               input  [2*32-1:0]      i_regFile0, i_regFile1, i_regFile2, i_regFile3,
                input  [WIDTH_REG-1:0] i_bypass);
 
 localparam WIDTH_MOD = WIDTH - 2*WIDTH_REG + 2*32 - 2; // rm RS2, RS1, CTRL[end:end-2]

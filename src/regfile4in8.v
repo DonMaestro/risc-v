@@ -1,11 +1,12 @@
-module regfile4in8(output [31:0] o_rdata0, o_rdata1, o_rdata2, o_rdata3,
-                   output [31:0] o_rdata4, o_rdata5, o_rdata6, o_rdata7,
-                   input  [4:0]  i_raddr0, i_raddr1, i_raddr2, i_raddr3,
-                   input  [4:0]  i_raddr4, i_raddr5, i_raddr6, i_raddr7,
-                   input         i_we0,    i_we1,    i_we2,    i_we3,
-                   input  [4:0]  i_waddr0, i_waddr1, i_waddr2, i_waddr3,
-                   input  [31:0] i_wdata0, i_wdata1, i_wdata2, i_wdata3,           
-                   input         i_clk);
+module regfile4in8 #(WIDTH = 5)
+                   (output [31:0]      o_rdata0, o_rdata1, o_rdata2, o_rdata3,
+                    output [31:0]      o_rdata4, o_rdata5, o_rdata6, o_rdata7,
+                    input  [WIDTH-1:0] i_raddr0, i_raddr1, i_raddr2, i_raddr3,
+                    input  [WIDTH-1:0] i_raddr4, i_raddr5, i_raddr6, i_raddr7,
+                    input              i_we0,    i_we1,    i_we2,    i_we3,
+                    input  [WIDTH-1:0] i_waddr0, i_waddr1, i_waddr2, i_waddr3,
+                    input  [31:0]      i_wdata0, i_wdata1, i_wdata2, i_wdata3,           
+                    input              i_clk);
                
 
 reg  [31:0] register[1:31];
