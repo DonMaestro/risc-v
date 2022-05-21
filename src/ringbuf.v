@@ -27,7 +27,7 @@ assign commit  = head & { SIZE{i_re} };
 
 generate
 	genvar i;
-	for (i = 0; i < SIZE; i = i + 1) begin
+	for (i = 0; i < SIZE; i = i + 1) begin: slot
 		register #(1) r_head(.o_q(head[i+1]),
 		                     .i_d(head[i]),
 		                     .i_en(i_re),

@@ -10,14 +10,20 @@ reg [ 7-1:0] sl_uop;
 reg [32-1:0] sl_imm;
 reg [ 7-1:0] sl_prd;
 
-bind bankSlot robtable #(46, 3) my_rb(
+bind bankSlot robtable #(14, 3) my_rb(
 	.valid  (val),
 	.busy   (busy),
 	.data   (data),
 	.brmask (brmask)
 );
 
-static virtual robtable #(46, 3) rb[PROB_W_NBANK][PROB_W_SIZE];
+//static virtual robtable pc[PROB_W_SIZE];
+wire [31:4] pc[PROB_W_SIZE];
+static virtual robtable #(14, 3) rb[PROB_W_NBANK][PROB_W_SIZE];
+
+for (isl = 0; isl < PROB_W_SIZE; isl++) begin
+	assign pc[isl] = `ROB.m_pc_b.slot[isl].r_data.data;
+end
 
 for (ibk = 0; ibk < PROB_W_NBANK; ibk++) begin
 	for (isl = 0; isl < PROB_W_SIZE; isl++) begin
@@ -26,21 +32,22 @@ for (ibk = 0; ibk < PROB_W_NBANK; ibk++) begin
 	end
 end
 
-task printROB(virtual robtable #(46, 3) rb[0:3][0:7]);
+task printROB(virtual robtable #(14, 3) rb[0:3][0:7],
+              input logic [31:4]         pc[PROB_W_SIZE]);
 int i, j;
 begin
-	$write("    ");
+	$write("           pc ");
 	for (j = 0; j < 4; j++)
-		$write("   v b     uop      imm prd   mask");
+		$write("  v b     uop prd mask");
 	$display;
 
 	for (i = 0; i < 8; i++) begin
-		$write("[%2d]", i);
+		$write("[%2d] %h", i, { pc[i], 4'b0 });
 		for (j = 0; j < 4; j++) begin
-			{ sl_uop, sl_imm, sl_prd } = rb[j][i].data;
-			$write(" | %b %b %b %h %d %b",
+			{ sl_uop, sl_prd } = rb[j][i].data;
+			$write(" | %b %b %h %d %b",
 				rb[j][i].valid, rb[j][i].busy,
-				sl_uop, sl_imm, sl_prd,
+				sl_uop, sl_prd,
 				rb[j][i].brmask);
 		end
 		$display;

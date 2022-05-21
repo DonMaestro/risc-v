@@ -2,10 +2,12 @@
  * dis_data = { val, uop, imm, prd, mask }
  */
 module rob #(parameter WIDTH_BANK = 3, WIDTH_REG = 7, WIDTH_BRM = 4,
-                       WIDTH = 2 + 7 + 32 + WIDTH_REG + WIDTH_BRM)
+                       WIDTH = 2 + 7 + WIDTH_REG + WIDTH_BRM)
            (output [WIDTH_BANK-1:0]   o_dis_tag,
             output [4*WIDTH_REG-1:0]  o_com_prd4x,
+            output [32-1:0]           o_pc0, o_pc1, o_pc2, o_pc3,
             output                    o_com_en,
+            input  [WIDTH_BANK+2-1:0] i_tag0, i_tag1, i_tag2, i_tag3,
             input  [31:0]             i_dis_pc,
             input  [4*WIDTH-1:0]      i_dis_data4x,
             input                     i_dis_we,
@@ -35,23 +37,29 @@ wor  [SIZE-1:0]      rst_busy[0:NBANK-1];
 
 wire we, re;
 wire [SIZE-1:0] head, tail;
+wire [32-1:4] PC[1:SIZE];
 wire empty;
 
 // output
 assign o_com_prd4x = { com_prd[3], com_prd[2], com_prd[1], com_prd[0] };
 assign o_com_en = re;
 
+assign o_pc0 = { PC[1 << i_tag0[WIDTH_BANK-1:2]], i_tag0[1:0], 2'b0 };
+assign o_pc1 = { PC[1 << i_tag1[WIDTH_BANK-1:2]], i_tag1[1:0], 2'b0 };
+assign o_pc2 = { PC[1 << i_tag2[WIDTH_BANK-1:2]], i_tag2[1:0], 2'b0 };
+assign o_pc3 = { PC[1 << i_tag3[WIDTH_BANK-1:2]], i_tag3[1:0], 2'b0 };
+
 assign re = ~empty & ~com_val[3] & ~com_val[2] & ~com_val[1] & ~com_val[0];
 assign we = i_dis_we;
 
 ringbuf m_pc_b(.o_data(),
                .o_empty(empty),
-               .i_data(i_dis_pc[31:2]),
+               .i_data(i_dis_pc[31:4]),
                .i_re(re),
                .i_we(we),
                .i_rst_n(i_rst_n),
                .i_clk(i_clk));
-defparam m_pc_b.WIDTH = 32 - 2;
+defparam m_pc_b.WIDTH = 32 - 4;
 defparam m_pc_b.SIZE = SIZE;
 
 assign head = m_pc_b.head;
@@ -86,6 +94,10 @@ generate
 		defparam m_inst_b.WIDTH_BRM = WIDTH_BRM;
 		defparam m_inst_b.WIDTH     = WIDTH;
 	end
+
+	for (i = 0; i < SIZE; i = i + 1) begin
+		assign PC[i+1] = m_pc_b.slot[i].r_data.data;
+	end
 endgenerate
 
 function [SIZE-1:0] rstBusy(
@@ -105,7 +117,7 @@ function [SIZE-1:0] rstBusy(
 endfunction
 
 encoder m_encoder(.o_q(o_dis_tag),
-                  .i_d(tail));
+                  .i_d(tail >>> 1));
 defparam m_encoder.SIZE = SIZE;
 
 endmodule
