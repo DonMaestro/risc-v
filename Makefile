@@ -1,7 +1,9 @@
 
 SOURCES_TB=Test/tb_core.v
-SOURCES_CORE = core.v $(shell echo src/*.v)
-SOURCES_TEST = tb_test.sv $(shell echo Test/*.sv)
+TEST_DIR=Test
+SOURCES_CORE = $(shell echo src/*.v)
+SOURCES_TEST = $(shell echo Test/*.sv)
+TARGET=core
 OUTPUT_DIR=Debug
 OUTPUT_NAME=core.out
 CFLAG=
@@ -9,9 +11,10 @@ CFLAG=
 SFLAG=
 #CFLAG=-fomit-frame-pointer -ftree-coalesce-vars -funit-at-a-time
 
+.PHONY: disassemble
+
 all: build
 	vvp ${OUTPUT_DIR}/${OUTPUT_NAME}
-
 
 build: $(SOURCES_CORE)
 	mkdir -p ./Debug
@@ -21,11 +24,13 @@ wave: build
 	vvp ${OUTPUT_DIR}/${OUTPUT_NAME}
 	gtkwave ${OUTPUT_DIR}/core.vcd
 
-test_build: $(SOURCES_TEST) $(SOURCES_CORE)
-	vlog -sv ${SOURCES_TEST} ${SOURCES_CORE}
+test_build:
+	vlog ${TEST_DIR}/tb_${TARGET}.sv
+	#iverilog -o ${TARGET}.out ${TEST_DIR}/tb_${TARGET}.v
 
 test_simulation: test_build
-	vsim -c tb_test
+	vsim -c tb_${TARGET}
+	#vvp ${TARGET}.out
 
 cc:
 	# compile _start
