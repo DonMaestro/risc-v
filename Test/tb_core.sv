@@ -24,6 +24,7 @@
 `include "src/issue_slot.v"
 `include "src/queue_arbiter.v"
 `include "src/regfile4in8.v"
+`include "src/imm4.v"
 
 `include "src/bypass.v"
 `include "src/demux1to4.v"
@@ -66,7 +67,7 @@ core #(WIDTH) m_core(.o_we(we),
 always @(posedge clk)
 begin
 	$display("time: %d", $realtime);
-	printROB(rb);
+	printROB(rb, pc);
 	$display("queue MEM");
 	printQUE1(qi1);
 	$display("queue ALU");

@@ -38,8 +38,8 @@ endgenerate
 always @(posedge i_clk, negedge i_rst_n)
 begin
 	if (!i_rst_n)
-		for (i = 0; i < SIZE; i = i + 1)
-			busy[i] = 1'b0;
+		for (i = 1; i < SIZE; i = i + 1)
+			busy[i] = 1'b1;
 	else begin
 
 		for (i = 0; i < WIDTH; i = i + 1) begin
