@@ -8,6 +8,7 @@ assign o_empty = ~|i_request;
 
 always @(*)
 begin
+	o_grant = { WIDTH{1'b0} };
 	for (i = WIDTH - 1; i >= 0; i = i - 1) begin
 		if (i_request[i])
 			o_grant = 1 << i;

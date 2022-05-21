@@ -6,7 +6,7 @@ localparam PQUE2_W_SIZE  = `QUE2.LENGTH;
 bind issue_slot qintf _qi(
 	.uop    (UOPCode),
 	.brmask (BrMask),
-	.tag    (tag),
+	.tag    (Tag),
 	.valid  (val),
 	.RD     (RD),
 	.p2     (p2),

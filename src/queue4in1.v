@@ -1,14 +1,15 @@
 module queue4in1 #(parameter SIZE = 32, WIDTH_REG = 5,
-                             WIDTH_TAG = 5, WIDTH_BRM = 3,
-                             WIDTH = 7 + WIDTH_BRM + WIDTH_TAG + 3*WIDTH_REG + 3)
-                 (output [WIDTH-1:0] o_inst1,
-                  output             o_ready,
-	          input  [WIDTH-1:0] i_inst1,
-	          input  [WIDTH-1:0] i_inst2,
-	          input  [WIDTH-1:0] i_inst3,
-	          input  [WIDTH-1:0] i_inst4,
+                   WIDTH_TAG = 5, WIDTH_BRM = 3,
+                   WIDTH_I = 7 + WIDTH_BRM + WIDTH_TAG + 0 + 3*WIDTH_REG + 3,
+                   WIDTH_O = 7 + WIDTH_BRM + WIDTH_TAG + 2 + 3*WIDTH_REG + 0)
+                 (output [WIDTH_O-1:0] o_inst1,
+                  output               o_ready,
+	          input  [WIDTH_I-1:0] i_inst1,
+	          input  [WIDTH_I-1:0] i_inst2,
+	          input  [WIDTH_I-1:0] i_inst3,
+	          input  [WIDTH_I-1:0] i_inst4,
                   input  [4*WIDTH_REG-1:0] i_wdest4x,
-                  input  [WIDTH_BRM-1:0] i_BrKill,
+                  input  [WIDTH_BRM:0] i_BrKill, // { enKill, BranchMask }
                   input i_en, i_rst_n, i_clk);
 
 localparam LENGTH = SIZE;
@@ -18,8 +19,8 @@ wire [LENGTH-1:0] request;
 wire [LENGTH-1:0] grant;
 
 wire empty;
-wire [WIDTH-1:0] data[0:LENGTH+3];
-wire [WIDTH-4:0] grant_data;
+wire [WIDTH_I-1:0] data[0:LENGTH+3];
+wire [WIDTH_O-1:0] grant_data;
 
 assign data[LENGTH]   = i_inst1;
 assign data[LENGTH+1] = i_inst2;
@@ -43,6 +44,7 @@ generate
 		                  .i_clk(i_clk));
 		defparam m_slot.WIDTH_REG = WIDTH_REG;
 		defparam m_slot.WIDTH_TAG = WIDTH_TAG;
+		defparam m_slot.TAG_BANK  = i[1:0];
 		defparam m_slot.WIDTH_BRM = WIDTH_BRM;
         end
 
