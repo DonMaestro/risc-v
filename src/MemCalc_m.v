@@ -39,7 +39,7 @@ end
 register r_pipeI(instr, 1'b1, i_instr, i_rst_n, i_clk);
 defparam r_pipeI.WIDTH = WIDTH;
 
-assign { val, func, brmask, uop, pc, imm, rd, op2, op1 } = instr;
+assign { val, uop, brmask, rd, pc, func, imm, op2, op1 } = instr;
 
 assign addr = op1 + imm;
 
