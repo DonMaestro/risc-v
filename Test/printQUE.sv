@@ -7,6 +7,7 @@ bind issue_slot qintf _qi(
 	.uop    (UOPCode),
 	.brmask (BrMask),
 	.tag    (Tag),
+	.PRY    (PRY),
 	.valid  (val),
 	.RD     (RD),
 	.p2     (p2),
@@ -15,11 +16,24 @@ bind issue_slot qintf _qi(
 	.RS1    (RS1)
 );
 
-static virtual qintf qi1[PQUE1_W_SIZE];
+bind issue_slot qintf #(.WIDTH_PRY(0)) _qi1(
+	.uop    (UOPCode),
+	.brmask (BrMask),
+	.tag    (Tag),
+	.PRY    (PRY),
+	.valid  (val),
+	.RD     (RD),
+	.p2     (p2),
+	.RS2    (RS2),
+	.p1     (p1),
+	.RS1    (RS1)
+);
+
+static virtual qintf #(.WIDTH_PRY(0)) qi1[PQUE1_W_SIZE];
 static virtual qintf qi2[PQUE2_W_SIZE][2];
 
 for (i = 0; i < PQUE1_W_SIZE; i++) begin
-	initial qi1[i] = `QUE1.slot[i].m_slot._qi;
+	initial qi1[i] = `QUE1.slot[i].m_slot._qi1;
 end
 
 for (i = 0; i < PQUE2_W_SIZE; i++) begin
@@ -37,21 +51,27 @@ begin
 	$display;
 
 	for (i = 0; i < PQUE2_W_SIZE; i++) begin
-		$write("[%2d]", i);
-		for (j = 0; j < 2; j++) begin
-			$write(" | %b %b %b %b %d %b %d %b %d",
-				qi[i][j].uop, qi[i][j].brmask,
-				qi[i][j].tag,
-				qi[i][j].valid, qi[i][j].RD,
-				qi[i][j].p2, qi[i][j].RS2,
-				qi[i][j].p1, qi[i][j].RS1);
+		if (qi[i][0].valid | qi[i][1].valid) begin
+			$write("[%2d]", i);
+			for (j = 0; j < 2; j++) begin
+					$write(" | %b %b %b %h %b %b %b %d %d %d",
+						qi[i][j].uop, qi[i][j].brmask,
+						qi[i][j].tag,
+						qi[i][j].PRY,
+						qi[i][j].valid,
+						qi[i][j].p2,
+						qi[i][j].p1,
+						qi[i][j].RD,
+						qi[i][j].RS2,
+						qi[i][j].RS1);
+			end
+			$display;
 		end
-		$display;
 	end
 end
 endtask
 
-task printQUE1(virtual qintf qi[PQUE1_W_SIZE]);
+task printQUE1(virtual qintf #(.WIDTH_PRY(0)) qi[PQUE1_W_SIZE]);
 int i, j;
 begin
 	$write("    ");
@@ -60,16 +80,22 @@ begin
 	$display;
 
 	for (i = 0; i < PQUE1_W_SIZE; i += 2) begin
-		$write("[%2d]", i);
-		for (j = 0; j < 2; j++) begin
-			$write(" | %b %b %b %b %d %b %d %b %d",
-				qi[i+j].uop, qi[i+j].brmask,
-				qi[i+j].tag,
-				qi[i+j].valid, qi[i+j].RD,
-				qi[i+j].p2, qi[i+j].RS2,
-				qi[i+j].p1, qi[i+j].RS1);
+		if (qi[i].valid | qi[i+1].valid) begin
+			$write("[%2d]", i);
+			for (j = 0; j < 2; j++) begin
+				$write(" | %b %b %b %h %b %b %b %d %d %d",
+					qi[i+j].uop, qi[i+j].brmask,
+					qi[i+j].tag,
+					qi[i+j].PRY,
+					qi[i+j].valid,
+					qi[i+j].p2,
+					qi[i+j].p1,
+					qi[i+j].RD,
+					qi[i+j].RS2,
+					qi[i+j].RS1);
+			end
+			$display;
 		end
-		$display;
 	end
 end
 endtask
