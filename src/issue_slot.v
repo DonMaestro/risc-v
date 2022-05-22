@@ -1,10 +1,11 @@
 // data = { UOPCode, BrMask, tag, RDst, RS2, RS1, val, p2, p1 }
 
 module issue_slot #(parameter WIDTH_REG = 5, WIDTH_TAG = 5, WIDTH_BRM = 3,
-                    TAG_BANK = 2'b00,
-                    WIDTH_I = 7 + WIDTH_BRM + WIDTH_TAG + 0 + 3*WIDTH_REG + 3,
-                    WIDTH_O = 7 + WIDTH_BRM + WIDTH_TAG + 2 + 3*WIDTH_REG + 0)
-                  (output o_request,
+                    WIDTH_PRY = 2, TAG_BANK = 2'b00,
+           WIDTH_I = 7 + WIDTH_BRM + WIDTH_TAG + 0 + 3*WIDTH_REG + WIDTH_PRY + 3,
+           WIDTH_O = 7 + WIDTH_BRM + WIDTH_TAG + 2 + 3*WIDTH_REG +         0 + 0)
+                  (output                   o_request,
+                   output [WIDTH_PRY-1:0]   o_priority,
                    output [WIDTH_O-1:0]     o_rslot, // without ready flags
                    output [WIDTH_I-1:0]     o_data,
                    input  [WIDTH_I-1:0]     i_data,
@@ -25,6 +26,7 @@ wire [6:0] UOPCode;
 wire [WIDTH_BRM-1:0] BrMask;
 wire [WIDTH_TAG-1:0] Tag;
 wire [WIDTH_REG-1:0] RD, RS1, RS2;
+wire [WIDTH_PRY-1:0] PRY; // Priority
 
 wire Dp1, Dp2, checkp1, checkp2, i_p1, i_p2;
 wire killslot;
@@ -33,7 +35,7 @@ wire Dval, rstVal, i_val;
 // input px bit
 assign { i_val, i_p2, i_p1 } = i_data[2:0];
 
-assign { UOPCode, BrMask, Tag, RD, RS2, RS1 } = data[WIDTH_I-1:3];
+assign { UOPCode, BrMask, Tag, RD, RS2, RS1, PRY } = data[WIDTH_I-1:3];
 
 // logic
 // check ready data
@@ -64,6 +66,7 @@ register #(1) r_val(val, 1'b1, Dval, i_rst_n, i_clk);
 
 // request flag
 assign o_request = val & p1 & p2;
+assign o_priority = PRY;
 
 // read logic
 assign rslot = { UOPCode, BrMask, Tag, TAG_BANK, RD, RS2, RS1 };
