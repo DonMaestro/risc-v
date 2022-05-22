@@ -117,7 +117,8 @@ function [SIZE-1:0] rstBusy(
 endfunction
 
 encoder m_encoder(.o_q(o_dis_tag),
-                  .i_d(tail >>> 1));
+                  .i_en(1'b1),
+                  .i_d(tail));
 defparam m_encoder.SIZE = SIZE;
 
 endmodule
