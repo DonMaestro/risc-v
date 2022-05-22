@@ -18,6 +18,7 @@ wire [2:0] ImmSrc;
 reg [4:0] drd, drs1, drs2;
 reg [2:0] funct3;
 reg [6:0] funct7;
+reg [1:0] pry; // priority
 wire [1:0] queue;
 
 assign o_brmask = i_en_j ? i_brmask + 1 : i_brmask;
@@ -51,7 +52,7 @@ begin
 	funct7 = i_instr[31:25];
 	funct3 = i_instr[14:12];
 
-	o_ctrl = { queue, i_en };
+	pry = 2'b0;
 
 	case(ImmSrc)
 		RT:
@@ -76,6 +77,7 @@ begin
 		begin
 			o_regs = { 5'b0, drs2, drs1 };
 			o_func = { 7'b0, funct3 };
+			pry = 2'b11;
 		end
 		UT:
 		begin
@@ -86,6 +88,7 @@ begin
 		begin
 			o_regs = { drd, 5'b0, 5'b0 };
 			o_func = { 7'b0, 3'b0 };
+			pry = 2'b11;
 		end
 		default:
 		begin
@@ -98,6 +101,9 @@ begin
 		o_regs = { 5'b0, 5'b0, 5'b0 };
 		o_func = { 7'b0, 3'b0 };
 	end
+
+	o_ctrl = { pry, queue, i_en };
+
 end
 
 endmodule

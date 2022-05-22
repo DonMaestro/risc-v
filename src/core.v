@@ -71,8 +71,9 @@ wire [4*WIDTH_PRD-1:0] setBusy4x;
 
 // wire issue queue
 wire                   en_queue;
-wire [WIDTH_QUEUE_O-1:0] issue[0:2];
-wire [WIDTH_QUEUE_I-1:0] issmem[0:3], issalu[0:3];
+wire [m_issue_alu.WIDTH_O-1:0] issue[0:2];
+wire [m_issue_mem.WIDTH_I-1:0] issmem[0:3];
+wire [m_issue_alu.WIDTH_I-1:0] issalu[0:3];
 wire [2:0] valmem[0:3], valalu[0:3];
 wire [4*WIDTH_PRD-1:0] wdest4x;
 
@@ -229,12 +230,17 @@ generate
 
 	register #(32) r_immrg1(PCrg1, en_rename1, PCx, rst_n, clk);
 	for (r = 0; r < 4; r = r + 1) begin
-		register #(10) r_funcrg1(funcrg1[r], en_rename1, func[r], rst_n, clk);
-		register #(5) r_ctrlrg1(ctrlrg1[r], en_rename1, ctrl[r], rst_n, clk);
-		register #(32) r_immrg1(immrg1[r], en_rename1, imm[r], rst_n, clk);
-		register r_brmaskrg1(brmaskrg1[r], en_rename1, brmask[r+1], rst_n, clk);
+		register #(10) r_funcrg1(funcrg1[r], en_rename1,
+		                         func[r], rst_n, clk);
+		register #(5) r_ctrlrg1(ctrlrg1[r], en_rename1,
+		                        ctrl[r], rst_n, clk);
+		register #(32) r_immrg1(immrg1[r], en_rename1,
+		                        imm[r], rst_n, clk);
+		register r_brmaskrg1(brmaskrg1[r], en_rename1,
+		                     brmask[r+1], rst_n, clk);
 		defparam r_brmaskrg1.WIDTH = WIDTH_BRM;
-		register #(7) r_uoprg1(uoprg1[r], en_rename1, uop[r], rst_n, clk);
+		register #(7) r_uoprg1(uoprg1[r], en_rename1,
+		                       uop[r], rst_n, clk);
  
 		assign prdo[r] = prdo4x[(r+1)*WIDTH_PRD-1:r*WIDTH_PRD];
 		assign pkg_rob[r] = {ctrlrg1[r][0], 1'b1, uoprg1[r],
@@ -242,11 +248,14 @@ generate
 		assign data4x[(r+1)*m_rob.WIDTH-1:r*m_rob.WIDTH] = pkg_rob[r];
 
 //register #(10) r_funcrg2(funcrg2[r], en_rename2, funcrg1[r], rst_n, clk);
-		register #(5) r_ctrlrg2(ctrlrg2[r], en_rename2, ctrlrg1[r], rst_n, clk);
+		register #(5) r_ctrlrg2(ctrlrg2[r], en_rename2,
+		                        ctrlrg1[r], rst_n, clk);
 //register #(32) r_immrg2(immrg2[r], en_rename2, immrg1[r], rst_n, clk);
-		register r_brmaskrg2(brmaskrg2[r], en_rename1, brmaskrg1[r], rst_n, clk);
+		register r_brmaskrg2(brmaskrg2[r], en_rename1,
+		                     brmaskrg1[r], rst_n, clk);
 		defparam r_brmaskrg2.WIDTH = WIDTH_BRM;
-		register #(7) r_uoprg2(uoprg2[r], en_rename2, uoprg1[r], rst_n, clk);
+		register #(7) r_uoprg2(uoprg2[r], en_rename2,
+		                       uoprg1[r], rst_n, clk);
 		register r_tagrg2(tagrg2, en_rename2, tagPkg, rst_n, clk);
 		defparam r_tagrg2.WIDTH = WIDTH_TAG;
 
@@ -288,9 +297,9 @@ rob m_rob(.o_dis_tag(tagPkg),
           .i_dis_data4x(data4x),
           .i_dis_we(en_rename2),
           .i_kill(), // { en, mask }
-          .i_rst_busy0(),
-          .i_rst_busy1(),
-          .i_rst_busy2(),
+          .i_rst_busy0({ ready_reg[0], Tag[0] }),
+          .i_rst_busy1({ ready_reg[1], Tag[1] }),
+          .i_rst_busy2({ ready_reg[2], Tag[2] }),
           .i_rst_busy3(),
           .i_rst_n(rst_n),
           .i_clk(clk));
@@ -327,10 +336,10 @@ generate
 		assign valmem[j] = { ctrlrg2[j][1], ~p2x[j] };
 		assign valalu[j] = { ctrlrg2[j][2], ~p2x[j] };
 		// issue_slot = { UOPcode, brmask, tag, prd, prs2, prs1, val, p2, p1 };
-		assign issmem[j] = { uoprg2[j], brmaskrg2[j],
-		                     tagrg2, prgs[j], valmem[j] };
-		assign issalu[j] = { uoprg2[j], brmaskrg2[j],
-		                     tagrg2, prgs[j], valalu[j] };
+		assign issmem[j] = { uoprg2[j], brmaskrg2[j], tagrg2,
+		                     prgs[j], valmem[j] };
+		assign issalu[j] = { uoprg2[j], brmaskrg2[j], tagrg2,
+		                     prgs[j], ctrlrg2[j][4:3], valalu[j] };
 	end
 endgenerate
 
@@ -348,6 +357,7 @@ queue4in1 m_issue_mem(.o_inst1(issue[0]),
 defparam m_issue_mem.WIDTH_REG = WIDTH_PRD;
 defparam m_issue_mem.WIDTH_TAG = WIDTH_TAG;
 defparam m_issue_mem.WIDTH_BRM = WIDTH_BRM;
+defparam m_issue_mem.WIDTH_PRY = 0;
 defparam m_issue_mem.SIZE = 32;
 
 queue4in2 m_issue_alu(.o_inst1(issue[1]),
@@ -366,6 +376,7 @@ queue4in2 m_issue_alu(.o_inst1(issue[1]),
 defparam m_issue_alu.WIDTH_REG = WIDTH_PRD;
 defparam m_issue_alu.WIDTH_TAG = WIDTH_TAG;
 defparam m_issue_alu.WIDTH_BRM = WIDTH_BRM;
+defparam m_issue_alu.WIDTH_PRY = 2;
 defparam m_issue_alu.SIZE = 32;
 
 register #(3) r_ready_que(.o_q(ready_reg),
