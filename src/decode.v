@@ -102,7 +102,7 @@ begin
 		o_func = { 7'b0, 3'b0 };
 	end
 
-	o_ctrl = { pry, queue, i_en };
+	o_ctrl = { pry, queue, i_en & i_imask };
 
 end
 
