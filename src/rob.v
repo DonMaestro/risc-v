@@ -5,13 +5,13 @@ module rob #(parameter WIDTH_BANK = 3, WIDTH_REG = 7, WIDTH_BRM = 4,
                        WIDTH = 2 + 7 + WIDTH_REG + WIDTH_BRM)
            (output [WIDTH_BANK-1:0]   o_dis_tag,
             output [4*WIDTH_REG-1:0]  o_com_prd4x,
-            output [32-1:0]           o_pc0, o_pc1, o_pc2, o_pc3,
+            output [32-1:0]           o_pc0, o_pc1, o_pc2, o_pc3, o_pcbr,
             output                    o_com_en,
             input  [WIDTH_BANK+2-1:0] i_tag0, i_tag1, i_tag2, i_tag3,
             input  [31:0]             i_dis_pc,
             input  [4*WIDTH-1:0]      i_dis_data4x,
             input                     i_dis_we,
-            input  [WIDTH_BRM:0]      i_kill,
+            input  [WIDTH_BRM:0]      i_kill, // { en, brmask }
             input  [3+WIDTH_BANK-1:0] i_rst_busy0,
             input  [3+WIDTH_BANK-1:0] i_rst_busy1,
             input  [3+WIDTH_BANK-1:0] i_rst_busy2,
@@ -49,6 +49,9 @@ assign o_pc1 = { PC[1 << i_tag1[WIDTH_BANK-1:2]], i_tag1[1:0], 2'b0 };
 assign o_pc2 = { PC[1 << i_tag2[WIDTH_BANK-1:2]], i_tag2[1:0], 2'b0 };
 assign o_pc3 = { PC[1 << i_tag3[WIDTH_BANK-1:2]], i_tag3[1:0], 2'b0 };
 
+// read next pc
+assign o_pcbr = { PC[1 << i_tag1[WIDTH_BANK-1:2] + 1], 2'b0, 2'b0 };
+
 assign re = ~empty & ~com_val[3] & ~com_val[2] & ~com_val[1] & ~com_val[0];
 assign we = i_dis_we;
 
@@ -70,7 +73,7 @@ generate
 	for (i = 0; i < NBANK; i = i + 1) begin: bank
 		// val exc uops prd brmask
 		assign new_data[i] = i_dis_data4x[(i+1)*WIDTH-1:i*WIDTH];
-		assign com_val[i] = commit[i][WIDTH-2];
+		assign com_val[i] = commit[i][WIDTH-1] & commit[i][WIDTH-2];
 		assign com_prd[i] = commit[i][WIDTH_BRM+WIDTH_REG-1:WIDTH_BRM];
 
 		assign rst_busy[i] = rstBusy(i_rst_busy0, i[1:0]);
@@ -166,7 +169,7 @@ generate
 		                .i_killMask(killMask),
 		                .i_killEn(killEn),
 		                .i_re(i_head[i]),
-		                .i_we(i_tail[i]),
+		                .i_we(i_tail[i] & i_we),
 		                .i_rst_busy(i_rst_busy[i]),
 		                .i_rst_n(i_rst_n),
 		                .i_clk (i_clk));
@@ -249,36 +252,16 @@ begin
 	brkill = 1'b0;
 	if (kill_en) begin
 		if (kill_mask < last_mask) begin // normal count
-			if (kill_mask < mask && mask <= last_mask)
+			if (kill_mask <= mask && mask <= last_mask)
 				brkill = 1'b1;
 		end
 		else begin // reset counter
-			if (kill_mask < mask || mask < last_mask)
+			if (kill_mask <= mask || mask < last_mask)
 				brkill = 1'b1;
 		end
 	end
 end
 endfunction
-
-endmodule
-
-// register with synchronous reset
-module sreg #(parameter WIDTH=32)
-            (output reg [WIDTH-1:0] o_q,
-             input wire [WIDTH-1:0] i_d,
-             input i_en, i_srsh, i_rst_n, i_clk);
-
-always @(posedge i_clk, negedge i_rst_n)
-begin
-	if (!i_rst_n)
-		o_q <= { WIDTH{1'b0} };
-	else if (i_srsh) begin
-		o_q <= { WIDTH{1'b0} };
-	end else begin
-		if (i_en)
-			o_q <= i_d;
-	end
-end
 
 endmodule
 
