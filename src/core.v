@@ -89,6 +89,7 @@ wire [WIDTH_BRM-1:0]   BrMask[0:2];
 wire [WIDTH_TAG+2-1:0] Tag[0:2];
 
 wire [32-1:0]          PC_ROB[0:2];
+wire [32-1:0]          PCtoBR;
 wire [32+10-1:0]       Func_Imm[0:2];
 
 wire [WIDTH_PRD-1:0]   waddr[0:2];
@@ -104,12 +105,12 @@ wire [WIDTH_PRD-1:0] waddr1, waddr2, wAddrMem;
 // wire alu
 wire [W_I_EXEC-1:0] mod_mem;
 wire [W_I_EXEC-1:0] mod_alu0, mod_alu1;
+wire [WIDTH_BRM:0] brkill; // { en, mask }
 
 /* main block */
 
 /* FrontEnd */
 
-assign w_AdrSrc = 1'b0;
 mux2in1 mux_PC(.o_dat(newPC),
                .i_control(w_AdrSrc), 
                .i_dat0(nextPC),
@@ -134,7 +135,7 @@ ram m_fetchBuff(.o_data(ReadData),
 register r_instr(Inst4x, 1'b1, dataIC4x, rst_n, clk);
 defparam r_instr.WIDTH = 32 * 4;
 register r_PCx  (PCx, 1'b1, PC, rst_n, clk);
-register #(1) r_en_decode(en_decode, 1'b1, 1'b1, rst_n, clk);
+sreg #(1) r_en_decode(en_decode, 1'b1, 1'b1, w_AdrSrc, rst_n, clk);
 
 //
 // Decode state
@@ -144,7 +145,7 @@ register #(1) r_en_decode(en_decode, 1'b1, 1'b1, rst_n, clk);
 
 always @(PCx)
 begin
-	case(PCx[1:0])
+	case(PCx[3:2])
 		2'b00: Imask = 4'b1111;
 		2'b01: Imask = 4'b1110;
 		2'b10: Imask = 4'b1100;
@@ -170,7 +171,7 @@ generate
 		                .o_brmask(brmask[i+1]),
 		                .i_en_j  (en_bm[i]),
 		                .i_brmask(brmask[i]),
-		                .i_en    (en_decode),
+		                .i_en    (en_decode & ~w_AdrSrc),
 		                .i_instr (Instr[i]),
 		                .i_imask (Imask[i]));
 		defparam m_decode.WIDTH_BRM = WIDTH_BRM;
@@ -273,12 +274,12 @@ rename m_rename(.o_prg1(prgs[0]),
                 .i_rg3(rg[2]),
                 .i_rg4(rg[3]),
                 .i_freelist(freelist4x),
-                .i_en(en_rename1),
+                .i_en(en_rename1 & ~w_AdrSrc),
                 .i_rst_n(rst_n),
                 .i_clk(clk));
 defparam m_rename.WIDTH_PRD = WIDTH_PRD;
 
-register #(1) r_en_rename2(en_rename2, 1'b1, en_rename1, rst_n, clk);
+sreg #(1) r_en_rename2(en_rename2, 1'b1, en_rename1, w_AdrSrc, rst_n, clk);
 
 // rob
 // dis_data = { val, uop, imm, prd, mask }
@@ -287,6 +288,7 @@ rob m_rob(.o_dis_tag(tagPkg),
           .o_pc1(PC_ROB[1]),
           .o_pc2(PC_ROB[2]),
           .o_pc3(),
+          .o_pcbr(PCtoBR),
           .o_com_prd4x(com_prd4x),
           .o_com_en(com_en),
           .i_tag0(Tag[0]),
@@ -295,8 +297,8 @@ rob m_rob(.o_dis_tag(tagPkg),
           .i_tag3(5'b0),
           .i_dis_pc(PCrg1),
           .i_dis_data4x(data4x),
-          .i_dis_we(en_rename2),
-          .i_kill(), // { en, mask }
+          .i_dis_we(en_rename2 & ~w_AdrSrc),
+          .i_kill(brkill), // { en, mask }
           .i_rst_busy0({ ready_reg[0], Tag[0] }),
           .i_rst_busy1({ ready_reg[1], Tag[1] }),
           .i_rst_busy2({ ready_reg[2], Tag[2] }),
@@ -326,7 +328,7 @@ defparam m_btab.WIDTH = WIDTH_PRD;
 
 // queue state
 
-register #(1) r_en_en_queue(en_queue, 1'b1, en_rename2, rst_n, clk);
+sreg #(1) r_en_en_queue(en_queue, 1'b1, en_rename2, w_AdrSrc, rst_n, clk);
 
 generate
 	genvar j;
@@ -337,7 +339,7 @@ generate
 		assign valalu[j] = { ctrlrg2[j][2], ~p2x[j] };
 		// issue_slot = { UOPcode, brmask, tag, prd, prs2, prs1, val, p2, p1 };
 		assign issmem[j] = { uoprg2[j], brmaskrg2[j], tagrg2,
-		                     prgs[j], valmem[j] };
+		                     prgs[j], 1'b0, valmem[j] };
 		assign issalu[j] = { uoprg2[j], brmaskrg2[j], tagrg2,
 		                     prgs[j], ctrlrg2[j][4:3], valalu[j] };
 	end
@@ -350,14 +352,14 @@ queue4in1 m_issue_mem(.o_inst1(issue[0]),
                       .i_inst3(issmem[2]),
                       .i_inst4(issmem[3]),
                       .i_wdest4x(wdest4x),
-                      .i_BrKill(4'b0),
-                      .i_en(en_queue),
+                      .i_BrKill(brkill),
+                      .i_en(en_queue & ~w_AdrSrc),
                       .i_rst_n(rst_n),
                       .i_clk(clk));
 defparam m_issue_mem.WIDTH_REG = WIDTH_PRD;
 defparam m_issue_mem.WIDTH_TAG = WIDTH_TAG;
 defparam m_issue_mem.WIDTH_BRM = WIDTH_BRM;
-defparam m_issue_mem.WIDTH_PRY = 0;
+defparam m_issue_mem.WIDTH_PRY = 1;
 defparam m_issue_mem.SIZE = 32;
 
 queue4in2 m_issue_alu(.o_inst1(issue[1]),
@@ -369,8 +371,8 @@ queue4in2 m_issue_alu(.o_inst1(issue[1]),
                       .i_inst3(issalu[2]),
                       .i_inst4(issalu[3]),
                       .i_wdest4x(wdest4x),
-                      .i_BrKill(4'b0),
-                      .i_en(en_queue),
+                      .i_BrKill(brkill),
+                      .i_en(en_queue & ~w_AdrSrc),
                       .i_rst_n(rst_n),
                       .i_clk(clk));
 defparam m_issue_alu.WIDTH_REG = WIDTH_PRD;
@@ -492,15 +494,15 @@ defparam m_ALU0.WIDTH     = W_I_EXEC;
 defparam m_ALU0.WIDTH_BRM = WIDTH_BRM;
 defparam m_ALU0.WIDTH_REG = WIDTH_PRD;
 
-executeBR  m_BR(.o_brmask(),
-                .o_brkill(),
+executeBR  m_BR(.o_brmask(brkill),
+                .o_brkill(w_AdrSrc),
+                .o_PC(rPC),
                 .o_we(),
-                .o_PC(),
                 .o_addr(),
                 .o_data(),
                 .o_valid(),
                 .i_instr(mod_alu0),
-                .i_PCNext(),
+                .i_PCNext(PCtoBR),
                 .i_rst_n(rst_n),
                 .i_clk(clk));
 defparam m_BR.WIDTH     = W_I_EXEC;
