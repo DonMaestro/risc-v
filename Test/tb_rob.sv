@@ -1,6 +1,7 @@
 `timescale 1 ns / 1 ns
 `include "src/ringbuf.v"
 `include "src/register.v"
+`include "src/sreg.v"
 `include "src/rob.v"
 `include "src/encoder.v"
 

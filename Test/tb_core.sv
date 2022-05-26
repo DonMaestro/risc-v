@@ -4,6 +4,7 @@
 `include "Test/intf_queue.sv"
 
 `include "src/core.v"
+`include "src/sreg.v"
 `include "src/icache_m.v"
 
 `include "src/decode.v"
