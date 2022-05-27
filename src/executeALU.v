@@ -27,7 +27,7 @@ wire valOut;
 register r_pipeI(instr, 1'b1, i_instr, i_rst_n, i_clk);
 defparam r_pipeI.WIDTH = WIDTH;
 
-assign { val, func, brmask, uop, PC, imm, rd, op2, op1 } = instr;
+assign { val, uop, brmask, rd, PC, func, imm, op2, op1 } = instr;
 
 // Control
 always @(func)

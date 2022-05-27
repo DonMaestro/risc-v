@@ -3,6 +3,7 @@ module MemCalc_m #(parameter WIDTH_MEM = 4, WIDTH_BRM = 4, WIDTH_REG = 5,
                  (output [31:0]          o_data,
                   output [WIDTH_REG-1:0] o_addr,
                   output                 o_valid,
+                  output [32+WIDTH_REG:0] o_bypass, // { val, WIDTH_REG, data }
                   input  [WIDTH-1:0]     i_instr,
                   input                  i_rst_n,
                   input                  i_clk);
@@ -68,6 +69,8 @@ assign data_r[23:16] = (func >= 10'h1) ? data[addr+2] : 32'b0;
 assign data_r[31:24] = (func == 10'h2) ? data[addr+3] : 32'b0;
 
 assign valOut = (FMT == IT) ? 1'b1 : 1'b0;
+
+assign o_bypass = { valOut, rd, data_r };
 
 register #( 1) r_pipeO_VALI(o_valid, 1'b1, valOut, i_rst_n, i_clk);
 register #(32) r_pipeO_DATA(o_data,  val,  data_r, i_rst_n, i_clk);
