@@ -1,5 +1,6 @@
 module decode #(parameter WIDTH_BRM = 6)
-              (output reg [14:0]      o_regs,
+              (output     [ 6:0]      o_uop,
+               output reg [14:0]      o_regs,
                output reg [ 9:0]      o_func,
                output reg [ 4:0]      o_ctrl,
                output     [31:0]      o_imm,
@@ -23,6 +24,8 @@ wire [1:0] queue;
 
 assign o_brmask = i_en_j ? i_brmask + 1 : i_brmask;
 
+assign o_uop = i_instr[6:0];
+
 always @(i_instr[6:0])
 begin
 	case (i_instr[6:0])
@@ -41,6 +44,7 @@ signExtend m_signEntend(.o_data(o_imm),
                         .i_data(i_instr[31:7]));
 
 type_queue m_type_queue(.o_type(queue),
+                        .i_en(i_imask),
                         .i_uop(i_instr[6:0]));
 
 always @(*)
@@ -109,19 +113,23 @@ end
 endmodule
 
 module type_queue(output reg [1:0] o_type,
+                  input            i_en,
                   input      [6:0] i_uop);
 
-localparam [1:0] MEMQ = 2'b01, ALUQ = 2'b10;
+localparam [1:0] MEMQ = 2'b01, ALUQ = 2'b10, NONE = 2'b00;
 
 always @(*)
 begin
-	casez (i_uop)
-	7'b0?00011: o_type = MEMQ;
-//	7'b1100011: o_type =
-//	7'b1101111: o_type =
-//	7'b1100111: o_type =
-	default:    o_type = ALUQ;
-	endcase
+	if (i_en) begin
+		casez (i_uop)
+		7'b0?00011: o_type = MEMQ;
+	//	7'b1100011: o_type =
+	//	7'b1101111: o_type =
+	//	7'b1100111: o_type =
+		default:    o_type = ALUQ;
+		endcase
+	end else
+		o_type = NONE;
 end
 
 endmodule
