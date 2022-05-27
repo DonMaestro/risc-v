@@ -7,8 +7,13 @@ localparam SIZE = $pow(2, WIDTH);
 
 reg [31:0] data[0:SIZE-1];
 
-//wire [WIDTH-1:0] addr = i_addr & { {(WIDTH-2){1'b1}}, 2'b0 };
-wire [WIDTH-1:0] addr = i_addr >> 2;
+reg [WIDTH-1:0] addr;
+
+always @(i_addr)
+begin
+	addr = i_addr >> 2;
+	addr[1:0] = 2'b0;
+end
 
 initial
 begin
