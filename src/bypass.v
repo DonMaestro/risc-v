@@ -1,42 +1,54 @@
 // i_regFileX = { RS2, RS1 };
 // instr = { CTRL, BRMASK, UOPCode, PC, IMM, RD, RS2, RS1 }
 // CTRL = { ENMOD, FUNC }
-module bypass #(parameter WIDTH = 32, WIDTH_REG = 5)
-              (output [WIDTH-1:0]     o_mod0, o_mod1, o_mod2, o_mod3,
-               input  [WIDTH-64-1:0]  i_instr0, i_instr1, i_instr2, i_instr3, //without RS2 and RS1
-               input  [2*32-1:0]      i_regFile0, i_regFile1, i_regFile2, i_regFile3,
-               input  [WIDTH_REG-1:0] i_bypass);
+module bypass #(parameter WIDTH_REG = 5)
+              (output [2*32-1:0]         o_data0, o_data1, o_data2, o_data3,
+               input  [2*WIDTH_REG-1:0]  i_irs0, i_irs1, i_irs2, i_irs3,
+               input  [2*32-1:0]         i_regFile0, i_regFile1, i_regFile2, i_regFile3,
+               input  [32+WIDTH_REG:0]   i_bypass0, i_bypass1, i_bypass2, i_bypass3);
 
-localparam WIDTH_MOD = WIDTH - 2*WIDTH_REG + 2*32 - 2; // rm RS2, RS1, CTRL[end:end-2]
+integer i, j;
 
-integer i;
-wire [1:0]           ctrl[0:2];
-wire [WIDTH_MOD-1:0] instr[0:3];
-wire [WIDTH_MOD-1:0] mod1[1:2], mod2[1:2], mod3[1:2], mod4[1:2];
+wire [WIDTH_REG-1:0] rs[0:7];
 
-// read control bits
-assign ctrl[0] = i_instr0[WIDTH-1:WIDTH-3]; // length 2b
-assign ctrl[1] = i_instr1[WIDTH-1:WIDTH-3]; // length 2b
-assign ctrl[2] = i_instr2[WIDTH-1:WIDTH-3]; // length 2b
+wire [32-1:0]        freg[0:7];
 
-// forwarding from regFile or modules
-assign instr[0] = { i_instr0, i_regFile0 };
-assign instr[1] = { i_instr1, i_regFile1 };
-assign instr[2] = { i_instr2, i_regFile2 };
-assign instr[3] = { i_instr3, i_regFile3 };
+wire                 val[0:3];
+wire [WIDTH_REG-1:0] brs[0:3];
+wire [32-1:0]        breg[0:3];
 
-// forwarding to modules
-//demux1to4 demux1(mod1[1], mod2[1], mod3[1], mod4[1], ctrl[1], instr[1]);
-//demux1to4 demux2(mod1[2], mod2[2], mod3[2], mod4[2], ctrl[2], instr[2]);
-//defparam demux1.WIDTH = WIDTH_MOD;
-//defparam demux2.WIDTH = WIDTH_MOD;
+reg [32-1:0] rg[0:7];
 
-assign o_mod0 = instr[0];
-assign o_mod1 = instr[1];
-assign o_mod2 = instr[2];
-assign o_mod3 = instr[3];
+assign { rs[1], rs[0] } = i_irs0;
+assign { rs[3], rs[2] } = i_irs1;
+assign { rs[5], rs[4] } = i_irs2;
+assign { rs[7], rs[6] } = i_irs3;
 
-//assign o_error = ctrl[1] && ctrl[2];
+assign { freg[1], freg[0] } = i_regFile0;
+assign { freg[3], freg[2] } = i_regFile1;
+assign { freg[5], freg[4] } = i_regFile2;
+assign { freg[7], freg[6] } = i_regFile3;
+
+assign { val[0], brs[0], breg[0] } = i_bypass0;
+assign { val[1], brs[1], breg[1] } = i_bypass1;
+assign { val[2], brs[2], breg[2] } = i_bypass2;
+assign { val[3], brs[3], breg[3] } = i_bypass3;
+
+always @(*)
+begin
+	for (i = 0; i < 8; i = i + 1) begin
+		rg[i] = freg[i];
+		for (j = 0; j < 4; j = j + 1) begin
+			if (val[j] && rs[i] == brs[j])
+ 				rg[i] = breg[j];
+		end
+	end
+end
+
+assign o_data0 = { rg[1], rg[0] };
+assign o_data1 = { rg[3], rg[2] };
+assign o_data2 = { rg[5], rg[4] };
+assign o_data3 = { rg[7], rg[6] };
 
 endmodule
 
