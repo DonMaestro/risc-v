@@ -6,6 +6,8 @@ module InstrDecoder(output reg [2:0] o_ImmSrc,
 always @(*)
 begin
 	casez (i_Op)
+		7'b011_0011: o_ImmSrc = RT;
+
 		7'b001_0011: o_ImmSrc = IT;
 		7'b000_0011: o_ImmSrc = IT;
 		7'b110_0111: o_ImmSrc = IT;
@@ -15,6 +17,7 @@ begin
 		7'b110_0011: o_ImmSrc = BT;
 		7'b110_1111: o_ImmSrc = JT;
 		7'b0?1_0111: o_ImmSrc = UT;
+		default:     o_ImmSrc = NO;
 	endcase
 end
 
