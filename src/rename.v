@@ -5,8 +5,11 @@ module rename #(parameter WIDTH_PRD = 7)
               (output [3*WIDTH_PRD-1:0] o_prg1, o_prg2, o_prg3, o_prg4,
                output [4*WIDTH_PRD-1:0] o_mtab,          // old prd for commit
                output [3:0]             o_enfreelist,    // enable read freelist
+               output                   o_busy,
                input  [3*5-1:0]         i_rg1, i_rg2, i_rg3, i_rg4,
                input  [4*WIDTH_PRD-1:0] i_freelist,
+               input  [4-1:0]           i_save_mask,
+               input                    i_save_en, i_return,
                input                    i_en, i_rst_n, i_clk);
 integer k;
 
@@ -50,9 +53,13 @@ assign { rsd[3], rs2[3], rs1[3] } = i_rg4;
 assign o_enfreelist = ~crd0;
 
 maptable m_maptab(.o_data12x({ prdo4x, prs24x, prs14x }),
+                  .o_busy(o_busy),
                   .i_addr8x({ rs24x, rs14x }),
                   .i_waddr4x(rsd4x),
                   .i_wdata4x(prsd4x),
+                  .i_save_mask(i_save_mask),
+                  .i_save_en(i_save_en),
+                  .i_return(i_return),
                   .i_we(i_en),
                   .i_rst_n(i_rst_n),
                   .i_clk(i_clk));
