@@ -1,5 +1,5 @@
 module executeBR #(parameter WIDTH_BRM = 4, WIDTH_REG = 7,
-                             WIDTH = 4*32 + WIDTH_REG + WIDTH_BRM + 7 + 10 + 1)
+                             WIDTH = 1 + 7 + WIDTH_BRM + WIDTH_REG + 10 + 4*32)
                  (output [WIDTH_BRM:0]    o_brmask, // { en, mask }
                   output                  o_brkill,
                   output [WIDTH_REG-1:0]  o_addr,
@@ -31,7 +31,7 @@ wire [31:0] PC_JT, PC_BT;
 wire [31:0] PC_new, rdDt;
 
 wire comp, brkill;
-wire valOut;
+reg valOut;
 
 register #(32) r_pipeI_PCN(PCNext, 1'b1, i_PCNext, i_rst_n, i_clk);
 register r_pipeI(instr, 1'b1, i_instr, i_rst_n, i_clk);
@@ -42,12 +42,13 @@ assign { val, uop, brmask, rd, PC, func, imm, op2, op1 } = instr;
 // control
 always @(uop)
 begin
+	valOut = val;
 	ctrl[4] = 1'b0;
 	case(uop)
 		7'b1100011: ctrl[4:3] = 2'b01; // b-type
 		7'b1101111: ctrl[4:3] = 2'b10;// jal
 		7'b1100111: ctrl[4:3] = 2'b11;// jalr
-		default:    ctrl[4:3] = 2'b00;
+		default:    valOut = 1'b0;
 	endcase
 end
 
@@ -77,18 +78,18 @@ mux2in1 #(32) mux_PC(PC_new, ctrl[4], PC_BT, PC_JT);
 // check
 comparator #(32) mod_comp(comp, PC_new, PCNext);
 
-assign brkill = val & ~comp & (ctrl[4] | ctrl[3]);
+assign brkill = val & ~comp & valOut;
 assign rdDt = PC_pl4;
 
-assign o_bypass = { ctrl[4], rd, rdDt };
+assign o_bypass = { valOut & |rd, rd, rdDt };
 
 register       r_pipeO_MASK(o_brmask, 1'b1, { brkill, brmask_next },  i_rst_n, i_clk);
 register #( 1) r_pipeO_ENKL(o_brkill, 1'b1, brkill,  i_rst_n, i_clk);
 register #(32) r_pipeO_PC  (o_PC,     val,  PC_new,  i_rst_n, i_clk);
-register #( 1) r_pipeO_VALI(o_valid,  1'b1, val,     i_rst_n, i_clk);
+register #( 1) r_pipeO_VALI(o_valid,  1'b1, valOut,  i_rst_n, i_clk);
 register       r_pipeO_ADDR(o_addr,   val,  rd,      i_rst_n, i_clk);
 register #(32) r_pipeO_DATA(o_data,   val,  rdDt,    i_rst_n, i_clk);
-register #( 1) r_pipeO_WERD(o_we,     1'b1, ctrl[4], i_rst_n, i_clk);
+register #( 1) r_pipeO_WERD(o_we,     1'b1, valOut & |rd, i_rst_n, i_clk);
 defparam r_pipeO_MASK.WIDTH = WIDTH_BRM + 1;
 defparam r_pipeO_ADDR.WIDTH = WIDTH_REG;
 

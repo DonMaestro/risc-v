@@ -1,5 +1,5 @@
 module MemCalc_m #(parameter WIDTH_MEM = 4, WIDTH_BRM = 4, WIDTH_REG = 5,
-                             WIDTH = 4*32 + WIDTH_REG + WIDTH_BRM + 7 + 10)
+                             WIDTH = 1 + 7 + WIDTH_BRM + WIDTH_REG + 10 + 4*32)
                  (output [31:0]          o_data,
                   output [WIDTH_REG-1:0] o_addr,
                   output                 o_valid,
