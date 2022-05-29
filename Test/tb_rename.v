@@ -1,5 +1,9 @@
 `timescale 1 ns / 10 ps
 `include "src/rename.v"
+`include "src/maptable.v"
+`include "src/mux2in1.v"
+`include "src/register.v"
+`include "src/comparator.v"
 
 module tb_rename;
 

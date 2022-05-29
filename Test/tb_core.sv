@@ -5,6 +5,10 @@
 
 `include "src/core.v"
 `include "src/sreg.v"
+`include "src/mux2in1.v"
+`include "src/register.v"
+`include "src/comparator.v"
+
 `include "src/icache_m.v"
 
 `include "src/decode.v"
@@ -13,6 +17,7 @@
 
 `include "src/freelist.v"
 `include "src/rename.v"
+`include "src/maptable.v"
 
 `include "src/rob.v"
 `include "src/ringbuf.v"
