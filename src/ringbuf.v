@@ -4,7 +4,7 @@
 //
 module ringbuf #(parameter WIDTH = 4, SIZE = 20)
                (output [WIDTH-1:0] o_data,
-                output             o_empty,
+                output             o_empty, o_overflow,
                 input  [WIDTH-1:0] i_data,
                 input  i_re, i_we, i_rst_n, i_clk);
 
@@ -14,11 +14,19 @@ localparam RST = { 1'b1, {(SIZE-1){1'b0}} };
 wire [SIZE:0] head, tail;
 wire [SIZE-1:0] commit, we_data;
 
+wire comp;
+wire over, overr;
+
 wire [WIDTH-1:0] data[0:SIZE-1];
 
 // output
-assign o_empty = |(head & tail);
+assign o_empty    = comp & ~overr;
+assign o_overflow = comp & overr;
 //assign overflow_before = |(head & (tail << 1));
+
+assign comp = |(head & tail);
+over p_over(over, overr, i_re, i_we);
+register #(1) r_we(overr, 1'b1, over, i_rst_n, i_clk);
 
 assign head[0] = head[SIZE];
 assign tail[0] = tail[SIZE];
@@ -54,6 +62,21 @@ endgenerate
 
 endmodule
 
+primitive over(q, state, r, w);
+	output q;
+	input state, r, w;
+	table
+	//      s r w : out
+		0 0 0 : 0;
+		0 0 1 : 1;
+		0 1 0 : 0;
+		0 1 1 : 0;
+		1 0 0 : 1;
+		1 0 1 : 1;
+		1 1 0 : 0;
+		1 1 1 : 0;
+	endtable
+endprimitive
 
 /**
  * slote
