@@ -7,6 +7,7 @@ module rob #(parameter WIDTH_BANK = 3, WIDTH_REG = 7, WIDTH_BRM = 4,
             output [4*WIDTH_REG-1:0]  o_com_prd4x,
             output [32-1:0]           o_pc0, o_pc1, o_pc2, o_pc3, o_pcbr,
             output                    o_com_en,
+            output                    o_overflow,
             input  [WIDTH_BANK+2-1:0] i_tag0, i_tag1, i_tag2, i_tag3,
             input  [31:0]             i_dis_pc,
             input  [4*WIDTH-1:0]      i_dis_data4x,
@@ -37,26 +38,28 @@ wor  [SIZE-1:0]      rst_busy[0:NBANK-1];
 
 wire we, re;
 wire [SIZE-1:0] head, tail;
-wire [32-1:4] PC[1:SIZE];
+wire [32-1:4] PC[0:SIZE-1];
 wire empty;
 
 // output
 assign o_com_prd4x = { com_prd[3], com_prd[2], com_prd[1], com_prd[0] };
 assign o_com_en = re;
 
-assign o_pc0 = { PC[1 << i_tag0[WIDTH_BANK-1:2]], i_tag0[1:0], 2'b0 };
-assign o_pc1 = { PC[1 << i_tag1[WIDTH_BANK-1:2]], i_tag1[1:0], 2'b0 };
-assign o_pc2 = { PC[1 << i_tag2[WIDTH_BANK-1:2]], i_tag2[1:0], 2'b0 };
-assign o_pc3 = { PC[1 << i_tag3[WIDTH_BANK-1:2]], i_tag3[1:0], 2'b0 };
+assign o_pc0 = { PC[i_tag0[WIDTH_BANK+2-1:2]], i_tag0[1:0], 2'b0 };
+assign o_pc1 = { PC[i_tag1[WIDTH_BANK+2-1:2]], i_tag1[1:0], 2'b0 };
+assign o_pc2 = { PC[i_tag2[WIDTH_BANK+2-1:2]], i_tag2[1:0], 2'b0 };
+assign o_pc3 = { PC[i_tag3[WIDTH_BANK+2-1:2]], i_tag3[1:0], 2'b0 };
 
 // read next pc
-assign o_pcbr = { PC[1 << i_tag1[WIDTH_BANK-1:2] + 1], 2'b0, 2'b0 };
+wire [2:0] tgN = i_tag1[WIDTH_BANK+2-1:2] + 1;
+assign o_pcbr = { PC[tgN], 2'b0, 2'b0 };
 
 assign re = ~empty & ~com_val[3] & ~com_val[2] & ~com_val[1] & ~com_val[0];
 assign we = i_dis_we;
 
 ringbuf m_pc_b(.o_data(),
                .o_empty(empty),
+               .o_overflow(o_overflow),
                .i_data(i_dis_pc[31:4]),
                .i_re(re),
                .i_we(we),
@@ -99,7 +102,7 @@ generate
 	end
 
 	for (i = 0; i < SIZE; i = i + 1) begin
-		assign PC[i+1] = m_pc_b.slot[i].r_data.data;
+		assign PC[i] = m_pc_b.slot[i].r_data.data;
 	end
 endgenerate
 
