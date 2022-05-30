@@ -2,11 +2,11 @@
  * dis_data = { val, uop, imm, prd, mask }
  */
 module rob #(parameter WIDTH_BANK = 3, WIDTH_REG = 7, WIDTH_BRM = 4,
-                       WIDTH = 2 + 7 + WIDTH_REG + WIDTH_BRM)
+                       WIDTH = 2 + 7 + 2*WIDTH_REG + WIDTH_BRM)
            (output [WIDTH_BANK-1:0]   o_dis_tag,
             output [4*WIDTH_REG-1:0]  o_com_prd4x,
             output [32-1:0]           o_pc0, o_pc1, o_pc2, o_pc3, o_pcbr,
-            output                    o_com_en,
+            output [4-1:0]            o_com_en,
             output                    o_overflow,
             input  [WIDTH_BANK+2-1:0] i_tag0, i_tag1, i_tag2, i_tag3,
             input  [31:0]             i_dis_pc,
@@ -33,17 +33,19 @@ wire [6:0]           dis_uops[0:NBANK-1];
 wire [WIDTH_BRM-1:0] dis_mask[0:NBANK-1];
 
 wire [WIDTH_REG-1:0] com_prd[0:NBANK-1];
+wire [WIDTH_REG-1:0] prdo[0:NBANK-1], prdn[0:NBANK-1];
 wire                 com_val[0:NBANK-1];
+wire                 com_busy[0:NBANK-1];
 wor  [SIZE-1:0]      rst_busy[0:NBANK-1];
 
-wire we, re;
+wire we;
+wand re;
 wire [SIZE-1:0] head, tail;
 wire [32-1:4] PC[0:SIZE-1];
 wire empty;
 
 // output
 assign o_com_prd4x = { com_prd[3], com_prd[2], com_prd[1], com_prd[0] };
-assign o_com_en = re;
 
 assign o_pc0 = { PC[i_tag0[WIDTH_BANK+2-1:2]], i_tag0[1:0], 2'b0 };
 assign o_pc1 = { PC[i_tag1[WIDTH_BANK+2-1:2]], i_tag1[1:0], 2'b0 };
@@ -54,7 +56,6 @@ assign o_pc3 = { PC[i_tag3[WIDTH_BANK+2-1:2]], i_tag3[1:0], 2'b0 };
 wire [2:0] tgN = i_tag1[WIDTH_BANK+2-1:2] + 1;
 assign o_pcbr = { PC[tgN], 2'b0, 2'b0 };
 
-assign re = ~empty & ~com_val[3] & ~com_val[2] & ~com_val[1] & ~com_val[0];
 assign we = i_dis_we;
 
 ringbuf m_pc_b(.o_data(),
@@ -73,11 +74,11 @@ assign tail = m_pc_b.tail;
 
 generate
 	genvar i;
+
+	assign re = ~empty;
 	for (i = 0; i < NBANK; i = i + 1) begin: bank
 		// val exc uops prd brmask
 		assign new_data[i] = i_dis_data4x[(i+1)*WIDTH-1:i*WIDTH];
-		assign com_val[i] = commit[i][WIDTH-1] & commit[i][WIDTH-2];
-		assign com_prd[i] = commit[i][WIDTH_BRM+WIDTH_REG-1:WIDTH_BRM];
 
 		assign rst_busy[i] = rstBusy(i_rst_busy0, i[1:0]);
 		assign rst_busy[i] = rstBusy(i_rst_busy1, i[1:0]);
@@ -99,6 +100,23 @@ generate
 		defparam m_inst_b.WIDTH_REG = WIDTH_REG;
 		defparam m_inst_b.WIDTH_BRM = WIDTH_BRM;
 		defparam m_inst_b.WIDTH     = WIDTH;
+
+		// read valid and busy bits
+		assign com_val[i]  = commit[i][WIDTH-1];
+		assign com_busy[i] = commit[i][WIDTH-2];
+		// read the old and new renamed register
+		assign { prdo[i], prdn[i] } = commit[i][WIDTH_BRM+2*WIDTH_REG-1:WIDTH_BRM];
+		// check en commit
+		assign re = ~(com_val[i] & com_busy[i]);
+		// check for zero address
+		assign o_com_en[i] = re & |com_prd[i];
+
+		// select the register to commit
+		// val  == 0 ? new renamed register
+		// busy == 0 ? old renamed register
+		mux2in1 m_comprd(com_prd[i],
+			~com_val[i] | com_busy[i], prdo[i], prdn[i] );
+		defparam m_comprd.WIDTH = WIDTH_REG;
 	end
 
 	for (i = 0; i < SIZE; i = i + 1) begin
