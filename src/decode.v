@@ -71,6 +71,10 @@ begin
 			need check SLLI SRLI SRAI	
 			*/
 			o_func = { 7'b0, funct3 };
+
+			//Jump And Link Reg
+			if (7'b1100111 == o_uop)
+				pry = 2'b11;
 		end
 		ST:
 		begin
