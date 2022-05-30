@@ -66,8 +66,7 @@ wire [m_rob.WIDTH-1:0]   pkg_rob[0:3];
 wire [4*m_rob.WIDTH-1:0] data4x;
 
 wire                   overflow_rob;
-wire                   com_en;
-wire [3:0]             enflist;
+wire [3:0]             enflist, com_en;
 wire [4*WIDTH_PRD-1:0] com_prd4x, freelist4x;
 wire [WIDTH_PRD-1:0]   freelist[0:3];
 wire [WIDTH_PRD-1:0]   com_prd[0:3];
@@ -236,7 +235,7 @@ generate
 	freelist m_freelist(.o_data (freelist[0]),
 	                    .i_data (com_prd[0]),
 	                    .i_re   (enflist[0]),
-	                    .i_we   (com_en),
+	                    .i_we   (com_en[0]),
 	                    .i_rst_n(rst_n),
 	                    .i_clk  (clk));
 	defparam m_freelist.WIDTH = WIDTH_PRD;
@@ -247,7 +246,7 @@ generate
 		freelist m_freelist(.o_data (freelist[r]),
 		                    .i_data (com_prd[r]),
 		                    .i_re   (enflist[r]),
-		                    .i_we   (com_en),
+		                    .i_we   (com_en[r]),
 		                    .i_rst_n(rst_n),
 		                    .i_clk  (clk));
 		defparam m_freelist.WIDTH = WIDTH_PRD;
@@ -278,7 +277,7 @@ generate
  
 		assign prdo[r] = prdo4x[(r+1)*WIDTH_PRD-1:r*WIDTH_PRD];
 		assign pkg_rob[r] = {ctrlrg1[r][0], 1'b1, uoprg1[r],
-		                     prdo[r], brmaskrg1[r] };
+		                     prdo[r], m_rename.prd[r], brmaskrg1[r] };
 		assign data4x[(r+1)*m_rob.WIDTH-1:r*m_rob.WIDTH] = pkg_rob[r];
 
 //register #(10) r_funcrg2(funcrg2[r], en_rename2, funcrg1[r], rst_n, clk);
@@ -538,6 +537,7 @@ pkg1 m_pkg1(.o_brmask (brkill),
             .o_bypass1(bppkg[2]),
             .i_PC     (PCtoBR),
             .i_data   (pkg[1]),
+            .i_brkill (brkill),
             .i_rst_n  (rst_n),
             .i_clk    (clk));
 defparam m_pkg1.WIDTH     = W_I_EXEC;
@@ -604,6 +604,7 @@ module pkg1 #(parameter WIDTH_REG = 7, WIDTH_BRM = 6,
              output [32+WIDTH_REG:0] o_bypass1,
              input  [32-1:0]         i_PC,
              input  [WIDTH-1:0]      i_data,
+             input  [WIDTH_BRM:0]    i_brkill, // { en, mask }
              input                   i_rst_n, i_clk);
 
 wire [32-1:0]        data_alu, data_br;
@@ -630,6 +631,7 @@ executeBR  m_BR(.o_brmask(o_brmask),
                 .o_bypass(o_bypass1),    // { 1, WIDTH_PRD, 32 }
                 .i_PCNext(i_PC),
                 .i_instr (i_data),
+                .i_brkill(i_brkill),
                 .i_rst_n (i_rst_n),
                 .i_clk   (i_clk));
 defparam m_BR.WIDTH_BRM = WIDTH_BRM;
