@@ -10,6 +10,7 @@ module executeBR #(parameter WIDTH_BRM = 4, WIDTH_REG = 7,
                   output                  o_valid,
                   input  [WIDTH-1:0]      i_instr,
                   input  [31:0]           i_PCNext,
+                  input  [WIDTH_BRM:0]    i_brkill, // { en, mask }
                   input                   i_rst_n, i_clk);
 
 wire [WIDTH-1:0] instr;
@@ -24,11 +25,15 @@ wire [WIDTH_REG-1:0] rd; // result register
 reg  [4:0] ctrl;
 
 wire assertion;
+reg        valid;
 
 wire [31:0] PCNext;
 wire [31:0] PC_pl4, PC_jal, PC_jalr;
 wire [31:0] PC_JT, PC_BT;
 wire [31:0] PC_new, rdDt;
+
+wire                 killEn;
+wire [WIDTH_BRM-1:0] killBr;
 
 wire comp, brkill;
 reg valOut;
@@ -39,8 +44,10 @@ defparam r_pipeI.WIDTH = WIDTH;
 
 assign { val, uop, brmask, rd, PC, func, imm, op2, op1 } = instr;
 
+assign { killEn, killBr } = i_brkill;
+
 // control
-always @(uop)
+always @(*)
 begin
 	valOut = val;
 	ctrl[4] = 1'b0;
@@ -50,6 +57,9 @@ begin
 		7'b1100111: ctrl[4:3] = 2'b11;// jalr
 		default:    valOut = 1'b0;
 	endcase
+
+	if (killEn)
+		valOut = brmask >= killBr ? 1'b1 : valOut;
 end
 
 always @(func)
@@ -78,7 +88,7 @@ mux2in1 #(32) mux_PC(PC_new, ctrl[4], PC_BT, PC_JT);
 // check
 comparator #(32) mod_comp(comp, PC_new, PCNext);
 
-assign brkill = val & ~comp & valOut;
+assign brkill = ~comp & valOut;
 assign rdDt = PC_pl4;
 
 assign o_bypass = { valOut & |rd, rd, rdDt };
