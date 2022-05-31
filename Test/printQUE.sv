@@ -16,11 +16,10 @@ bind issue_slot qintf _qi(
 	.RS1    (RS1)
 );
 
-bind issue_slot qintf #(.WIDTH_PRY(0)) _qi1(
+bind issue_slot qintf #(.WIDTH_PRY(1)) _qi1(
 	.uop    (UOPCode),
 	.brmask (BrMask),
 	.tag    (Tag),
-	.PRY    (PRY),
 	.valid  (val),
 	.RD     (RD),
 	.p2     (p2),
@@ -29,14 +28,14 @@ bind issue_slot qintf #(.WIDTH_PRY(0)) _qi1(
 	.RS1    (RS1)
 );
 
-static virtual qintf #(.WIDTH_PRY(0)) qi1[PQUE1_W_SIZE];
+static virtual qintf #(.WIDTH_PRY(1)) qi1[PQUE1_W_SIZE];
 static virtual qintf qi2[PQUE2_W_SIZE][2];
 
-for (i = 0; i < PQUE1_W_SIZE; i++) begin
+for (i = 0; i < PQUE1_W_SIZE; i++) begin: bindQ1
 	initial qi1[i] = `QUE1.slot[i].m_slot._qi1;
 end
 
-for (i = 0; i < PQUE2_W_SIZE; i++) begin
+for (i = 0; i < PQUE2_W_SIZE; i++) begin: bindQ2
 	for (j = 0; j < 2; j++) begin
 		initial qi2[i][j] = `QUE2.slot[i].out[j].m_slot._qi;
 	end
@@ -71,7 +70,7 @@ begin
 end
 endtask
 
-task printQUE1(virtual qintf #(.WIDTH_PRY(0)) qi[PQUE1_W_SIZE]);
+task printQUE1(virtual qintf #(.WIDTH_PRY(1)) qi[PQUE1_W_SIZE]);
 int i, j;
 begin
 	$write("    ");

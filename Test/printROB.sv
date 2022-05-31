@@ -8,7 +8,7 @@ localparam PROB_W_SIZE  = `ROB.SIZE;
 
 reg [ 7-1:0] sl_uop;
 reg [32-1:0] sl_imm;
-reg [ 7-1:0] sl_prd;
+reg [ 7-1:0] sl_prdo, sl_prdn;
 
 bind bankSlot robtable #(14, 3) my_rb(
 	.valid  (val),
@@ -36,18 +36,18 @@ task printROB(virtual robtable #(14, 3) rb[0:3][0:7],
               input logic [31:4]         pc[PROB_W_SIZE]);
 int i, j;
 begin
-	$write("           pc ");
+	$write("           pc");
 	for (j = 0; j < 4; j++)
-		$write("  v b     uop prd mask");
+		$write("   v b     uop prd   mask");
 	$display;
 
 	for (i = 0; i < 8; i++) begin
 		$write("[%2d] %h", i, { pc[i], 4'b0 });
 		for (j = 0; j < 4; j++) begin
-			{ sl_uop, sl_prd } = rb[j][i].data;
-			$write(" | %b %b %h %d %b",
+			{ sl_uop, sl_prdo, sl_prdn } = rb[j][i].data;
+			$write(" | %b %b %b %h->%h %b",
 				rb[j][i].valid, rb[j][i].busy,
-				sl_uop, sl_prd,
+				sl_uop, sl_prdo, sl_prdn,
 				rb[j][i].brmask);
 		end
 		$display;
