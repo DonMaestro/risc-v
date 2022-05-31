@@ -115,7 +115,7 @@ generate
 		// val  == 0 ? new renamed register
 		// busy == 0 ? old renamed register
 		mux2in1 m_comprd(com_prd[i],
-			~com_val[i] | com_busy[i], prdo[i], prdn[i] );
+			com_val[i], prdn[i], prdo[i] );
 		defparam m_comprd.WIDTH = WIDTH_REG;
 	end
 
