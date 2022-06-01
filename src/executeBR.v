@@ -1,7 +1,6 @@
 module executeBR #(parameter WIDTH_BRM = 4, WIDTH_REG = 7,
                              WIDTH = 1 + 7 + WIDTH_BRM + WIDTH_REG + 10 + 4*32)
-                 (output [WIDTH_BRM:0]    o_brmask, // { en, mask }
-                  output                  o_brkill,
+                 (output [$pow(2, WIDTH_BRM)-1:0] o_brkill,
                   output [WIDTH_REG-1:0]  o_addr,
                   output [31:0]           o_data,
                   output [32+WIDTH_REG:0] o_bypass,    // { 1, WIDTH_PRD, 32 }
@@ -10,16 +9,21 @@ module executeBR #(parameter WIDTH_BRM = 4, WIDTH_REG = 7,
                   output                  o_valid,
                   input  [WIDTH-1:0]      i_instr,
                   input  [31:0]           i_PCNext,
-                  input  [WIDTH_BRM:0]    i_brkill, // { en, mask }
+                  input  [WIDTH_BRM-1:0]  i_brmask,
+                  input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
                   input                   i_rst_n, i_clk);
 
+`include "src/killf.v"
+integer i;
+
 wire [WIDTH-1:0] instr;
+wire [WIDTH_BRM-1:0] brmask_new;
 
 wire [31:0] op1, op2, imm, PC;
 wire [ 6:0] uop;
 wire [ 9:0] func;
 wire        val;
-wire [WIDTH_BRM-1:0] brmask, brmask_next;
+wire [WIDTH_BRM-1:0] brmask;
 wire [WIDTH_REG-1:0] rd; // result register
 
 reg  [4:0] ctrl;
@@ -32,19 +36,17 @@ wire [31:0] PC_pl4, PC_jal, PC_jalr;
 wire [31:0] PC_JT, PC_BT;
 wire [31:0] PC_new, rdDt;
 
-wire                 killEn;
-wire [WIDTH_BRM-1:0] killBr;
-
-wire comp, brkill;
+wire comp, killEn;
 reg valOut;
+reg [$pow(2, WIDTH_BRM)-1:0] brkill;
 
 register #(32) r_pipeI_PCN(PCNext, 1'b1, i_PCNext, i_rst_n, i_clk);
 register r_pipeI(instr, 1'b1, i_instr, i_rst_n, i_clk);
 defparam r_pipeI.WIDTH = WIDTH;
+register r_pipeIbrmask(brmask_new, 1'b1, i_brmask, i_rst_n, i_clk);
+defparam r_pipeIbrmask.WIDTH = WIDTH_BRM;
 
 assign { val, uop, brmask, rd, PC, func, imm, op2, op1 } = instr;
-
-assign { killEn, killBr } = i_brkill;
 
 // control
 always @(*)
@@ -58,8 +60,7 @@ begin
 		default:    valOut = 1'b0;
 	endcase
 
-	if (killEn)
-		valOut = brmask >= killBr ? 1'b1 : valOut;
+	valOut = killf(brmask, i_brkill) ? 1'b0 : valOut;
 end
 
 always @(func)
@@ -67,8 +68,18 @@ begin
 	ctrl[2:0] = func[2:0];
 end
 
-assign brmask_next = brmask + 1;
 // data
+
+// mask formatting
+always @(*)
+begin
+	brkill = { WIDTH_BRM{1'b0} };
+	if (killEn) begin
+		for (i = 0; i < $pow(2, WIDTH_BRM); i = i + 1)
+			if (brmask < i && i <= brmask_new)
+				brkill[i] = 1'b1;
+	end
+end
 
 // calculation PC
 assign PC_pl4 = PC  + 4;
@@ -88,19 +99,18 @@ mux2in1 #(32) mux_PC(PC_new, ctrl[4], PC_BT, PC_JT);
 // check
 comparator #(32) mod_comp(comp, PC_new, PCNext);
 
-assign brkill = ~comp & valOut;
+assign killEn = ~comp & valOut;
 assign rdDt = PC_pl4;
 
 assign o_bypass = { valOut & |rd, rd, rdDt };
 
-register       r_pipeO_MASK(o_brmask, 1'b1, { brkill, brmask_next },  i_rst_n, i_clk);
-register #( 1) r_pipeO_ENKL(o_brkill, 1'b1, brkill,  i_rst_n, i_clk);
+register       r_pipeO_MASK(o_brkill, 1'b1, brkill,  i_rst_n, i_clk);
 register #(32) r_pipeO_PC  (o_PC,     val,  PC_new,  i_rst_n, i_clk);
 register #( 1) r_pipeO_VALI(o_valid,  1'b1, valOut,  i_rst_n, i_clk);
 register       r_pipeO_ADDR(o_addr,   val,  rd,      i_rst_n, i_clk);
 register #(32) r_pipeO_DATA(o_data,   val,  rdDt,    i_rst_n, i_clk);
 register #( 1) r_pipeO_WERD(o_we,     1'b1, valOut & |rd, i_rst_n, i_clk);
-defparam r_pipeO_MASK.WIDTH = WIDTH_BRM + 1;
+defparam r_pipeO_MASK.WIDTH = $pow(2, WIDTH_BRM);
 defparam r_pipeO_ADDR.WIDTH = WIDTH_REG;
 
 endmodule

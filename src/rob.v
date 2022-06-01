@@ -12,7 +12,7 @@ module rob #(parameter WIDTH_BANK = 3, WIDTH_REG = 7, WIDTH_BRM = 4,
             input  [31:0]             i_dis_pc,
             input  [4*WIDTH-1:0]      i_dis_data4x,
             input                     i_dis_we,
-            input  [WIDTH_BRM:0]      i_kill, // { en, brmask }
+            input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
             input  [3+WIDTH_BANK-1:0] i_rst_busy0,
             input  [3+WIDTH_BANK-1:0] i_rst_busy1,
             input  [3+WIDTH_BANK-1:0] i_rst_busy2,
@@ -89,7 +89,7 @@ generate
 		              .i_pkg(new_data[i]),
 		              .i_head(head),
 		              .i_tail(tail),
-	                      .i_killMask(i_kill),
+	                      .i_brkill(i_brkill),
 		              .i_re(re),
 		              .i_we(we),
 		              .i_rst_busy(rst_busy[i]),
@@ -156,29 +156,18 @@ module bank #(parameter SIZE = 32, WIDTH_DT = 39, WIDTH_REG = 7, WIDTH_BRM = 4,
             (output [WIDTH-1:0]   o_pkg,
              input  [WIDTH-1:0]   i_pkg,
              input  [SIZE-1:0]    i_head, i_tail,
-             input  [WIDTH_BRM:0] i_killMask, // { enkill, brmask }
+             input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
              input  [SIZE-1:0]    i_rst_busy,
              input  i_re, i_we, i_rst_n, i_clk);
 
-integer j;
-
-wire [WIDTH-1:0]      pkg[0:SIZE-1];
-wor  [WIDTH-1:0]      pkg_head;
-
-wire                 killEn;
-wire [WIDTH_BRM-1:0] killMask;
+wire [WIDTH-1:0] pkg[0:SIZE-1];
+wor  [WIDTH-1:0] pkg_head;
 
 wire            rstEn;
 wire [SIZE-1:0] rstBusy;
 
 // output
 assign o_pkg = pkg_head;
-
-/**
- * kill logic
- */
-assign killEn   = i_killMask[WIDTH_BRM];
-assign killMask = i_killMask[WIDTH_BRM-1:0];
 
 generate
 	genvar i;
@@ -187,8 +176,7 @@ generate
 
 		bankSlot m_slot(.o_pkg(pkg[i]),
 		                .i_pkg(i_pkg),
-		                .i_killMask(killMask),
-		                .i_killEn(killEn),
+		                .i_brkill(i_brkill),
 		                .i_re(i_head[i]),
 		                .i_we(i_tail[i] & i_we),
 		                .i_rst_busy(i_rst_busy[i]),
@@ -211,11 +199,12 @@ module bankSlot #(parameter WIDTH_DT = 39, WIDTH_REG = 7, WIDTH_BRM = 4,
                         WIDTH = 2 + WIDTH_DT + WIDTH_BRM)
             (output [WIDTH-1:0]     o_pkg, 
              input  [WIDTH-1:0]     i_pkg, 
-             input  [WIDTH_BRM-1:0] i_killMask,
-             input                  i_killEn,
+             input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
              input                  i_re, i_we,
              input                  i_rst_busy,
              input                  i_rst_n, i_clk);
+
+`include "src/killf.v"
 
 wire [WIDTH-1:0]  pkg;
 
@@ -231,7 +220,7 @@ assign o_pkg = i_re ? pkg : { WIDTH{1'b0} };
 assign pkg = { val, busy, data, brmask };
 
 assign val_new = i_pkg[WIDTH_DT+WIDTH_BRM+1];
-assign val_rst = brkill(i_killEn, i_killMask, brmask, brmask);
+assign val_rst = killf(brmask, i_brkill);
 
 assign busy_new = i_pkg[WIDTH_DT+WIDTH_BRM];
 
@@ -265,24 +254,6 @@ register r_brmask(.o_q    (brmask),
                   .i_rst_n(i_rst_n),
                   .i_clk  (i_clk));
 defparam r_brmask.WIDTH = WIDTH_BRM;
-
-// fun
-function brkill(input                 kill_en,
-                input [WIDTH_BRM-1:0] kill_mask, mask, last_mask);
-begin
-	brkill = 1'b0;
-	if (kill_en) begin
-		if (kill_mask < last_mask) begin // normal count
-			if (kill_mask <= mask && mask <= last_mask)
-				brkill = 1'b1;
-		end
-		else begin // reset counter
-			if (kill_mask <= mask || mask < last_mask)
-				brkill = 1'b1;
-		end
-	end
-end
-endfunction
 
 endmodule
 

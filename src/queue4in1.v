@@ -9,7 +9,7 @@ module queue4in1 #(parameter SIZE = 32, WIDTH_REG = 5,
 	          input  [WIDTH_I-1:0] i_inst3,
 	          input  [WIDTH_I-1:0] i_inst4,
                   input  [4*WIDTH_REG-1:0] i_wdest4x,
-                  input  [WIDTH_BRM:0] i_BrKill, // { enKill, BranchMask }
+                  input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
                   input i_en, i_rst_n, i_clk);
 
 localparam LENGTH = SIZE;
@@ -38,7 +38,7 @@ generate
 		                  .o_data(data[i]),
 		                  .i_data(data[i+4]),
 		                  .i_WDest4x(i_wdest4x),
-		                  .i_BrKill(i_BrKill),
+		                  .i_brkill(i_brkill),
 		                  .i_grant(grant[i]),
 		                  .i_en(i_en),
 		                  .i_rst_n(i_rst_n),

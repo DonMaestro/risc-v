@@ -17,6 +17,9 @@ localparam WIDTH_QUEUE_O = 7 + WIDTH_BRM + WIDTH_TAG + 2 + 3*WIDTH_PRD + 0;
 //assign { val, uop, brmask, rd, pc, func, imm, op2, op1 } = instr;
 localparam W_I_EXEC = 1 + 7 + WIDTH_BRM + WIDTH_PRD + 10 + 4*32;
 
+// kill function
+`include "src/killf.v"
+
 reg en_core;
 
 wire [31:0] newPC, nextPC, rPC;
@@ -92,6 +95,7 @@ wire [3-1:0] ready;
 wire [3-1:0]         ready_reg;
 wire [WIDTH_QUEUE_O-1:0] instr[0:2];
 
+wire [3-1:0]           Ival;
 wire [WIDTH_PRD-1:0]   PRD[0:2];
 wire [7-1:0]           UOPCode[0:2];
 wire [WIDTH_BRM-1:0]   BrMask[0:2];
@@ -109,7 +113,7 @@ wire [7-1:0]           PRS2[0:2];
 wire [W_I_EXEC-1:0] pkg[0:3];
 
 // wire alu
-wire [WIDTH_BRM:0] brkill; // { en, mask }
+wire [$pow(2, WIDTH_BRM)-1:0] brkill;
 wire [2*32-1:0]       DPS2x[0:2];
 wire [32+WIDTH_PRD:0] bppkg[0:6];
 
@@ -335,7 +339,7 @@ rob m_rob(.o_dis_tag(tagPkg),
           .i_dis_pc(PCrg1),
           .i_dis_data4x(data4x),
           .i_dis_we(we_rob),
-          .i_kill(brkill), // { en, mask }
+          .i_brkill(brkill),
           .i_rst_busy0({ ready_reg[0], Tag[0] }),
           .i_rst_busy1({ ready_reg[1], Tag[1] }),
           .i_rst_busy2({ ready_reg[2], Tag[2] }),
@@ -389,7 +393,7 @@ queue4in1 m_issue_mem(.o_inst1(issue[0]),
                       .i_inst3(issmem[2]),
                       .i_inst4(issmem[3]),
                       .i_wdest4x(wdest4x),
-                      .i_BrKill(brkill),
+                      .i_brkill(brkill),
                       .i_en(we_que),
                       .i_rst_n(rst_n),
                       .i_clk(clk));
@@ -408,7 +412,7 @@ queue4in2 m_issue_alu(.o_inst1(issue[1]),
                       .i_inst3(issalu[2]),
                       .i_inst4(issalu[3]),
                       .i_wdest4x(wdest4x),
-                      .i_BrKill(brkill),
+                      .i_brkill(brkill),
                       .i_en(we_que),
                       .i_rst_n(rst_n),
                       .i_clk(clk));
@@ -506,11 +510,15 @@ bypass m_bypassNetwork(.o_data0(DPS2x[0]),
 defparam m_bypassNetwork.WIDTH_REG = WIDTH_PRD;
 
 //assign { val, uop, brmask, rd, pc, func, imm, op2, op1 } = instr;
-assign pkg[0] = { ready_reg[0], UOPCode[0], BrMask[0],
+assign Ival[0] = ready_reg[0] & ~killf(BrMask[0], brkill);
+assign Ival[1] = ready_reg[1] & ~killf(BrMask[1], brkill);
+assign Ival[2] = ready_reg[2] & ~killf(BrMask[2], brkill);
+
+assign pkg[0] = { Ival[0], UOPCode[0], BrMask[0],
                      PRD[0], PC_ROB[0], Func_Imm[0], DPS2x[0] };
-assign pkg[1] = { ready_reg[1], UOPCode[1], BrMask[1],
+assign pkg[1] = { Ival[1], UOPCode[1], BrMask[1],
                      PRD[1], PC_ROB[1], Func_Imm[1], DPS2x[1] };
-assign pkg[2] = { ready_reg[2], UOPCode[2], BrMask[2],
+assign pkg[2] = { Ival[2], UOPCode[2], BrMask[2],
                      PRD[2], PC_ROB[2], Func_Imm[2], DPS2x[2] };
 // instr = { CTRL, BRMASK, UOPCode, PC, IMM, RD, RS2, RS1 }
 
@@ -527,8 +535,8 @@ defparam m_pkg0.WIDTH     = W_I_EXEC;
 defparam m_pkg0.WIDTH_REG = WIDTH_PRD;
 defparam m_pkg0.WIDTH_BRM = WIDTH_BRM;
 
-pkg1 m_pkg1(.o_brmask (brkill),
-            .o_brkill (w_AdrSrc),
+assign w_AdrSrc = |brkill;
+pkg1 m_pkg1(.o_brkill (brkill),
             .o_PC     (rPC),
             .o_data   (wdata1),
             .o_addr   (waddr1),
@@ -537,6 +545,7 @@ pkg1 m_pkg1(.o_brmask (brkill),
             .o_bypass1(bppkg[2]),
             .i_PC     (PCtoBR),
             .i_data   (pkg[1]),
+            .i_brmask (brmask[4]),
             .i_brkill (brkill),
             .i_rst_n  (rst_n),
             .i_clk    (clk));
@@ -594,8 +603,7 @@ endmodule
  */
 module pkg1 #(parameter WIDTH_REG = 7, WIDTH_BRM = 6,
                         WIDTH = m_ALU.WIDTH)
-            (output [WIDTH_BRM:0]    o_brmask, // { en, mask }
-             output                  o_brkill,
+            (output [$pow(2, WIDTH_BRM)-1:0] o_brkill,
              output [32-1:0]         o_PC,
              output [32-1:0]         o_data,
              output [WIDTH_REG-1:0]  o_addr,
@@ -604,7 +612,8 @@ module pkg1 #(parameter WIDTH_REG = 7, WIDTH_BRM = 6,
              output [32+WIDTH_REG:0] o_bypass1,
              input  [32-1:0]         i_PC,
              input  [WIDTH-1:0]      i_data,
-             input  [WIDTH_BRM:0]    i_brkill, // { en, mask }
+             input  [WIDTH_BRM-1:0]  i_brmask,
+             input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
              input                   i_rst_n, i_clk);
 
 wire [32-1:0]        data_alu, data_br;
@@ -621,8 +630,7 @@ executeALU m_ALU(.o_addr  (addr_alu),
 defparam m_ALU.WIDTH_BRM = WIDTH_BRM;
 defparam m_ALU.WIDTH_REG = WIDTH_REG;
 
-executeBR  m_BR(.o_brmask(o_brmask),
-                .o_brkill(o_brkill),
+executeBR  m_BR(.o_brkill(o_brkill),
                 .o_PC    (o_PC),
                 .o_addr  (addr_br),
                 .o_data  (data_br),
@@ -631,6 +639,7 @@ executeBR  m_BR(.o_brmask(o_brmask),
                 .o_bypass(o_bypass1),    // { 1, WIDTH_PRD, 32 }
                 .i_PCNext(i_PC),
                 .i_instr (i_data),
+                .i_brmask(i_brmask),
                 .i_brkill(i_brkill),
                 .i_rst_n (i_rst_n),
                 .i_clk   (i_clk));
