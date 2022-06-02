@@ -38,6 +38,9 @@ wire                 com_val[0:NBANK-1];
 wire                 com_busy[0:NBANK-1];
 wor  [SIZE-1:0]      rst_busy[0:NBANK-1];
 
+wire [NBANK-1:0]     val[0:SIZE-1];
+reg  [2-1:0]         ni;
+
 wire we;
 wand re;
 wire [SIZE-1:0] head, tail;
@@ -54,7 +57,16 @@ assign o_pc3 = { PC[i_tag3[WIDTH_BANK+2-1:2]], i_tag3[1:0], 2'b0 };
 
 // read next pc
 wire [2:0] tgN = i_tag1[WIDTH_BANK+2-1:2] + 1;
-assign o_pcbr = { PC[tgN], 2'b0, 2'b0 };
+always @(*)
+begin
+	casex(val[tgN])
+		4'b0001: ni = 2'b11;
+		4'b001?: ni = 2'b10;
+		4'b01??: ni = 2'b01;
+		4'b1???: ni = 2'b00;
+	endcase
+end
+assign o_pcbr = { PC[tgN], ni, 2'b0 };
 
 assign we = i_dis_we;
 
@@ -73,7 +85,7 @@ assign head = m_pc_b.head;
 assign tail = m_pc_b.tail;
 
 generate
-	genvar i;
+	genvar i, j;
 
 	assign re = ~empty;
 	for (i = 0; i < NBANK; i = i + 1) begin: bank
@@ -117,6 +129,11 @@ generate
 		mux2in1 m_comprd(com_prd[i],
 			com_val[i], prdn[i], prdo[i] );
 		defparam m_comprd.WIDTH = WIDTH_REG;
+
+		// read valid bits
+		for (j = 0; j < SIZE; j = j + 1) begin
+			assign val[j][i] = m_inst_b.slot[j].m_slot.val;
+		end
 	end
 
 	for (i = 0; i < SIZE; i = i + 1) begin
