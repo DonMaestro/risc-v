@@ -61,8 +61,8 @@ wire [WIDTH_TAG-1:0]                   tagrg2;
 wire [32-1:0]          PCrg1;
 
 wire [3*WIDTH_PRD-1:0] prgs[0:3];
-wire [2*WIDTH_PRD-1:0] prs2x[0:3];
-wire [  WIDTH_PRD-1:0] prd[0:3];
+wire [WIDTH_PRD-1:0]   prs2[0:3], prs1[0:3];
+wire [WIDTH_PRD-1:0]   prd[0:3];
 
 reg                      we_rob;
 wire [m_rob.WIDTH-1:0]   pkg_rob[0:3];
@@ -262,7 +262,7 @@ generate
 		assign com_prd[r] = com_prd4x[(r+1)*WIDTH_PRD-1:r*WIDTH_PRD];
 		assign freelist4x[(r+1)*WIDTH_PRD-1:r*WIDTH_PRD] = freelist[r];
 
-		assign { prd[r], prs2x[r] } = prgs[r];
+		assign { prd[r], prs2[r], prs1[r] } = prgs[r];
 	end
 
 	register #(32) r_immrg1(PCrg1, en_core, PCx, rst_n, clk);
@@ -351,16 +351,17 @@ defparam m_rob.WIDTH_REG  = WIDTH_PRD;
 defparam m_rob.WIDTH_BRM  = WIDTH_BRM;
 
 // busy table
-assign setBusy4x = { prd[3], prd[2], prd[1], prd[0] };
+assign setBusy4x = { m_rename.prd[3], m_rename.prd[2],
+                     m_rename.prd[1], m_rename.prd[0] };
 
 busytb m_btab(.o_data1(p2x[0]),
               .o_data2(p2x[1]),
               .o_data3(p2x[2]),
               .o_data4(p2x[3]),
-              .i_addr1(prs2x[0]),
-              .i_addr2(prs2x[1]),
-              .i_addr3(prs2x[2]),
-              .i_addr4(prs2x[3]),
+              .i_addr1({ prs2[0], prs1[0] }),
+              .i_addr2({ prs2[1], prs1[1] }),
+              .i_addr3({ prs2[2], prs1[2] }),
+              .i_addr4({ prs2[3], prs1[3] }),
               .i_setAddr4x(setBusy4x),
               .i_rstAddr4x(wdest4x),
               .i_rst_n(i_rst_n),
@@ -371,13 +372,28 @@ defparam m_btab.WIDTH = WIDTH_PRD;
 
 sreg #(1) r_en_en_queue(en_queue, en_core, en_rename2, w_AdrSrc, rst_n, clk);
 
+wire [WIDTH_PRD-1:0] WDest[0:3];
+wire RS1eqWD[0:3][0:3];
+wire RS2eqWD[0:3][0:3];
+wor checkp1[0:3];
+wor checkp2[0:3];
+
 generate
-	genvar j;
+	genvar j, d;
+	for (j = 0; j < 4; j = j + 1)
+		assign WDest[j] = wdest4x[(j+1)*WIDTH_PRD:j*WIDTH_PRD];
+
 	for (j = 0; j < 4; j = j + 1) begin
+		for (d = 0; d < 4; d = d + 1) begin: wdest
+			comparator #(WIDTH_PRD) cm_ps1(RS1eqWD[j][d], WDest[d], prs1[j]);
+			comparator #(WIDTH_PRD) cm_ps2(RS2eqWD[j][d], WDest[d], prs2[j]);
+			assign checkp1[j] = RS1eqWD[j][d];
+			assign checkp2[j] = RS2eqWD[j][d];
+		end
 
 		// valxxx = { val, p2, p1 }
-		assign valmem[j] = { ctrlrg2[j][1], ~p2x[j] };
-		assign valalu[j] = { ctrlrg2[j][2], ~p2x[j] };
+		assign valmem[j] = { ctrlrg2[j][1], ~p2x[j] | { checkp2[j], checkp1[j] } };
+		assign valalu[j] = { ctrlrg2[j][2], ~p2x[j] | { checkp2[j], checkp1[j] } };
 		// issue_slot = { UOPcode, brmask, tag, prd, prs2, prs1, val, p2, p1 };
 		assign issmem[j] = { uoprg2[j], brmaskrg2[j], tagrg2,
 		                     prgs[j], 1'b0, valmem[j] };
@@ -509,11 +525,19 @@ bypass m_bypassNetwork(.o_data0(DPS2x[0]),
                        .i_bypass6(bppkg[6]));
 defparam m_bypassNetwork.WIDTH_REG = WIDTH_PRD;
 
-//assign { val, uop, brmask, rd, pc, func, imm, op2, op1 } = instr;
-assign Ival[0] = ready_reg[0] & ~killf(BrMask[0], brkill);
-assign Ival[1] = ready_reg[1] & ~killf(BrMask[1], brkill);
-assign Ival[2] = ready_reg[2] & ~killf(BrMask[2], brkill);
+wire [$pow(2, WIDTH_BRM)-1:0] _brkill;
+register r_kill_mask(.o_q(_brkill),
+                     .i_en(1'b1),
+                     .i_d(brkill),
+                     .i_rst_n(rst_n),
+                     .i_clk(clk));
+defparam r_kill_mask.WIDTH = $pow(2, WIDTH_BRM);
 
+assign Ival[0] = ready_reg[0] & ~killf(BrMask[0], brkill | _brkill);
+assign Ival[1] = ready_reg[1] & ~killf(BrMask[1], brkill | _brkill);
+assign Ival[2] = ready_reg[2] & ~killf(BrMask[2], brkill | _brkill);
+
+//assign { val, uop, brmask, rd, pc, func, imm, op2, op1 } = instr;
 assign pkg[0] = { Ival[0], UOPCode[0], BrMask[0],
                      PRD[0], PC_ROB[0], Func_Imm[0], DPS2x[0] };
 assign pkg[1] = { Ival[1], UOPCode[1], BrMask[1],
@@ -591,7 +615,7 @@ MemCalc_m m_mem(.o_data  (o_data),
                 .i_instr (i_data),
                 .i_rst_n (i_rst_n),
                 .i_clk   (i_clk));
-defparam m_mem.WIDTH_MEM = 4;
+defparam m_mem.WIDTH_MEM = 14;
 defparam m_mem.WIDTH_REG = WIDTH_REG;
 defparam m_mem.WIDTH_BRM = WIDTH_BRM;
 
