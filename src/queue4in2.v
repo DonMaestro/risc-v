@@ -96,8 +96,8 @@ begin
 	if (!empty_br[1]) begin
 		ctrl = 1'b1;
 		grant[1] = pry_br[1];
-		empty[0] = empty_alu[0];
-		empty[1] = empty_br[1];
+		empty[0] = empty_br[1];
+		empty[1] = empty_alu[0];
 	end else if (!empty_br[0]) begin
 		grant[0] = pry_br[0];
 		empty[0] = empty_br[0];
