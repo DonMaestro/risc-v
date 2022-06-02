@@ -44,7 +44,7 @@ begin
 	for (i = 0; i < 8; i = i + 1) begin
 		rg[i] = freg[i];
 		for (j = 0; j < 7; j = j + 1) begin
-			if (val[j] && rs[i] == brs[j])
+			if (val[j] && |rs[i] && rs[i] == brs[j])
  				rg[i] = breg[j];
 		end
 	end
