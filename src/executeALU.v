@@ -40,7 +40,7 @@ begin
 	endcase
 end
 
-always @(uop)
+always @(uop, val)
 begin
 	valOut = val;
 	casez(uop)
@@ -66,9 +66,9 @@ mux3in1 #(32) mux_result(result, ctrl[5:4], data, imm, auipc);
 
 assign o_bypass = { valOut, rd, result };
 
-register       r_pipeO_ADDR(o_addr,  val,  rd,     i_rst_n, i_clk);
-register #( 1) r_pipeO_VALI(o_valid, 1'b1, valOut, i_rst_n, i_clk);
-register #(32) r_pipeO_DATA(o_data,  val,  result, i_rst_n, i_clk);
+register       r_pipeO_ADDR(o_addr,  valOut, rd,     i_rst_n, i_clk);
+register #( 1) r_pipeO_VALI(o_valid, 1'b1,   valOut, i_rst_n, i_clk);
+register #(32) r_pipeO_DATA(o_data,  valOut, result, i_rst_n, i_clk);
 defparam r_pipeO_ADDR.WIDTH = WIDTH_REG;
 
 endmodule

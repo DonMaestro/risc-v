@@ -75,9 +75,15 @@ always @(*)
 begin
 	brkill = { WIDTH_BRM{1'b0} };
 	if (killEn) begin
-		for (i = 0; i < $pow(2, WIDTH_BRM); i = i + 1)
-			if (brmask < i && i <= brmask_new)
-				brkill[i] = 1'b1;
+		for (i = 0; i < $pow(2, WIDTH_BRM); i = i + 1) begin
+			if (brmask < brmask_new) begin
+				if (brmask < i && i <= brmask_new)
+					brkill[i] = 1'b1;
+			end else begin
+				if (brmask < i || i <= brmask_new)
+					brkill[i] = 1'b1;
+			end
+		end
 	end
 end
 
@@ -102,14 +108,14 @@ comparator #(32) mod_comp(comp, PC_new, PCNext);
 assign killEn = ~comp & valOut;
 assign rdDt = PC_pl4;
 
-assign o_bypass = { valOut & |rd, rd, rdDt };
+assign o_bypass = { valOut, rd, rdDt };
 
-register       r_pipeO_MASK(o_brkill, 1'b1, brkill,  i_rst_n, i_clk);
-register #(32) r_pipeO_PC  (o_PC,     val,  PC_new,  i_rst_n, i_clk);
-register #( 1) r_pipeO_VALI(o_valid,  1'b1, valOut,  i_rst_n, i_clk);
-register       r_pipeO_ADDR(o_addr,   val,  rd,      i_rst_n, i_clk);
-register #(32) r_pipeO_DATA(o_data,   val,  rdDt,    i_rst_n, i_clk);
-register #( 1) r_pipeO_WERD(o_we,     1'b1, valOut & |rd, i_rst_n, i_clk);
+register       r_pipeO_MASK(o_brkill, 1'b1,   brkill, i_rst_n, i_clk);
+register #(32) r_pipeO_PC  (o_PC,     valOut, PC_new, i_rst_n, i_clk);
+register #( 1) r_pipeO_VALI(o_valid,  1'b1,   valOut, i_rst_n, i_clk);
+register       r_pipeO_ADDR(o_addr,   valOut, rd,     i_rst_n, i_clk);
+register #(32) r_pipeO_DATA(o_data,   valOut, rdDt,   i_rst_n, i_clk);
+register #( 1) r_pipeO_WERD(o_we,     1'b1,   valOut, i_rst_n, i_clk);
 defparam r_pipeO_MASK.WIDTH = $pow(2, WIDTH_BRM);
 defparam r_pipeO_ADDR.WIDTH = WIDTH_REG;
 
