@@ -124,13 +124,14 @@ wire                 we0,    we1,    we2;
 /* main block */
 
 // control
+wire overflow_que = 1'b0;
 always @(*)
 begin
-	en_core = ~overflow_rob;
-	en_dec = en_core & en_decode & ~w_AdrSrc;
-	en_ren = en_core & en_rename1 & ~w_AdrSrc;
-	we_rob = en_core & en_rename2 & ~w_AdrSrc;
-	we_que = en_core & en_queue & ~w_AdrSrc;
+	en_core = ~overflow_rob & ~overflow_que;
+	en_dec = en_core & ~w_AdrSrc & en_decode;
+	en_ren = en_core & ~w_AdrSrc & en_rename1;
+	we_rob = en_core & ~w_AdrSrc & en_rename2;
+	we_que = en_core & ~w_AdrSrc & en_queue;
 end
 
 /* FrontEnd */
@@ -177,7 +178,7 @@ begin
 	endcase
 end
 
-register #(1) r_en_j  (en_bm[0],  en_core, en_bm[4],  rst_n, clk);
+sreg #(1) r_en_j  (en_bm[0], en_core, en_bm[4], ~w_AdrSrc,  rst_n, clk);
 register      r_brmask(brmask[0], en_core, brmask[4], rst_n, clk);
 defparam r_brmask.WIDTH = WIDTH_BRM;
 
@@ -265,7 +266,7 @@ generate
 		assign { prd[r], prs2[r], prs1[r] } = prgs[r];
 	end
 
-	register #(32) r_immrg1(PCrg1, en_core, PCx, rst_n, clk);
+	register #(32) r_pcrg1(PCrg1, en_core, PCx, rst_n, clk);
 	for (r = 0; r < 4; r = r + 1) begin
 		register #(10) r_funcrg1(funcrg1[r], en_core,
 		                         func[r], rst_n, clk);
@@ -319,7 +320,7 @@ rename m_rename(.o_prg1(prgs[0]),
                 .i_clk(clk));
 defparam m_rename.WIDTH_PRD = WIDTH_PRD;
 
-sreg #(1) r_en_rename2(en_rename2, 1'b1, en_rename1, w_AdrSrc, rst_n, clk);
+sreg #(1) r_en_rename2(en_rename2, en_core, en_rename1, w_AdrSrc, rst_n, clk);
 
 // rob
 // dis_data = { val, uop, imm, prd, mask }
@@ -370,7 +371,7 @@ defparam m_btab.WIDTH = WIDTH_PRD;
 
 // queue state
 
-sreg #(1) r_en_en_queue(en_queue, en_core, en_rename2, w_AdrSrc, rst_n, clk);
+sreg #(1) r_en_queue(en_queue, en_core, en_rename2, w_AdrSrc, rst_n, clk);
 
 wire [WIDTH_PRD-1:0] WDest[0:3];
 wire RS1eqWD[0:3][0:3];
