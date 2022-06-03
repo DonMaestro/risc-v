@@ -30,7 +30,7 @@ wire [WIDTH_REG-1:0] rd; // result register
 wire [31:0]          data_r;
 wire [WIDTH_MEM-1:0] addr;
 
-wire valOut;
+reg valOut;
 
 initial
 begin
@@ -44,37 +44,43 @@ assign { val, uop, brmask, rd, pc, func, imm, op2, op1 } = instr;
 
 assign addr = op1 + imm;
 
-always @(uop)
+always @(uop, val)
 begin
 	case(uop)
 		7'b0000011: FMT = IT;
 		7'b0100011: FMT = ST;
 		default:    FMT = OT;
 	endcase
+
+	valOut = 1'b0;
+	if (FMT == IT)
+		valOut = val;
 end
 
 always @(posedge i_clk)
 begin
 	// if S-type instruction and valid data
 	if (val && FMT == ST) begin
-		data[addr] = op2;
+		data[addr+0] <= op2[ 7: 0];
+		data[addr+1] <= op2[15: 8];
+		data[addr+2] <= op2[23:16];
+		data[addr+3] <= op2[31:24];
 		$writememh("Debug/ram.dat", data);
 	end
 end
 
 // read
-assign data_r[ 7: 0] = (func >= 10'h0) ? data[addr+0] : 32'b0;
-assign data_r[15: 8] = (func >= 10'h1) ? data[addr+1] : 32'b0;
-assign data_r[23:16] = (func >= 10'h1) ? data[addr+2] : 32'b0;
-assign data_r[31:24] = (func == 10'h2) ? data[addr+3] : 32'b0;
+assign data_r[ 7: 0] = (func >= 10'h0) ? data[addr+0] : 8'b0;
+assign data_r[15: 8] = (func >= 10'h1) ? data[addr+1] : 8'b0;
+assign data_r[23:16] = (func >= 10'h1) ? data[addr+2] : 8'b0;
+assign data_r[31:24] = (func == 10'h2) ? data[addr+3] : 8'b0;
 
-assign valOut = (FMT == IT) ? 1'b1 : 1'b0;
 
 assign o_bypass = { valOut, rd, data_r };
 
-register #( 1) r_pipeO_VALI(o_valid, 1'b1, valOut, i_rst_n, i_clk);
-register #(32) r_pipeO_DATA(o_data,  val,  data_r, i_rst_n, i_clk);
-register       r_pipeO_ADDR(o_addr,  val,  rd,     i_rst_n, i_clk);
+register #( 1) r_pipeO_VALI(o_valid, 1'b1,    valOut, i_rst_n, i_clk);
+register #(32) r_pipeO_DATA(o_data,  valOut,  data_r, i_rst_n, i_clk);
+register       r_pipeO_ADDR(o_addr,  valOut,  rd,     i_rst_n, i_clk);
 defparam r_pipeO_ADDR.WIDTH = WIDTH_REG;
 
 endmodule
