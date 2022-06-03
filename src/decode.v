@@ -26,14 +26,17 @@ assign o_brmask = i_en_j ? i_brmask + 1 : i_brmask;
 
 assign o_uop = i_instr[6:0];
 
-always @(i_instr[6:0])
+always @(i_instr[6:0], i_en)
 begin
-	case (i_instr[6:0])
-		7'b1100011: o_en_j = 1;
-		7'b1101111: o_en_j = 1;
-		7'b1100111: o_en_j = 1;
-		default:    o_en_j = 0;
-	endcase
+	o_en_j = 1'b0;
+	if (i_en) begin
+		case (i_instr[6:0])
+			7'b1100011: o_en_j = 1;
+			7'b1101111: o_en_j = 1;
+			7'b1100111: o_en_j = 1;
+			default:    o_en_j = 0;
+		endcase
+	end
 end
 
 InstrDecoder m_decode(.o_ImmSrc(ImmSrc),
