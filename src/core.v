@@ -206,14 +206,14 @@ endgenerate
 
 always @(*)
 begin
-	save_mask = { en_bm[3], en_bm[2], en_bm[1], en_bm[0] };
-	save_en = |((Imask << 1) & save_mask) & ~maptb_busy;
+	save_mask = { en_bm[4], en_bm[3], en_bm[2], en_bm[1] };
+	save_en = |save_mask & ~maptb_busy;
 	case(save_mask)
-		4'b0001: save_mask = 4'b0000;
-		4'b0010: save_mask = 4'b0001;
-		4'b0100: save_mask = 4'b0011;
-		4'b1000: save_mask = 4'b0111;
-		default: save_mask = 4'bXXXX;
+		4'b0001: save_mask = 4'b0001;
+		4'b0010: save_mask = 4'b0011;
+		4'b0100: save_mask = 4'b0111;
+		4'b1000: save_mask = 4'b1111;
+		default: save_mask = 4'b1111;
 	endcase
 end
 
@@ -554,6 +554,7 @@ pkg0 m_pkg0(.o_data  (wdata0),
             .o_val   (we0),
             .o_bypass(bppkg[0]),
             .i_data  (pkg[0]),
+            .i_brkill(brkill),
             .i_rst_n (rst_n),
             .i_clk   (clk));
 defparam m_pkg0.WIDTH     = W_I_EXEC;
@@ -607,6 +608,7 @@ module pkg0 #(parameter WIDTH_REG = 7, WIDTH_BRM = 6,
              output                  o_val,
              output [32+WIDTH_REG:0] o_bypass,
              input  [WIDTH-1:0]      i_data,
+             input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
              input                   i_rst_n, i_clk);
 
 MemCalc_m m_mem(.o_data  (o_data),
@@ -614,6 +616,7 @@ MemCalc_m m_mem(.o_data  (o_data),
                 .o_valid (o_val),
                 .o_bypass(o_bypass), // { 1, WIDTH_PRD, 32 }
                 .i_instr (i_data),
+                .i_brkill(i_brkill),
                 .i_rst_n (i_rst_n),
                 .i_clk   (i_clk));
 defparam m_mem.WIDTH_MEM = 14;

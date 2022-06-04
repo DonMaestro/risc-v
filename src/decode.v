@@ -26,10 +26,10 @@ assign o_brmask = i_en_j ? i_brmask + 1 : i_brmask;
 
 assign o_uop = i_instr[6:0];
 
-always @(i_instr[6:0], i_en)
+always @(i_instr[6:0], i_en, i_imask)
 begin
 	o_en_j = 1'b0;
-	if (i_en) begin
+	if (i_en && i_imask) begin
 		case (i_instr[6:0])
 			7'b1100011: o_en_j = 1;
 			7'b1101111: o_en_j = 1;
