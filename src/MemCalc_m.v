@@ -5,8 +5,11 @@ module MemCalc_m #(parameter WIDTH_MEM = 4, WIDTH_BRM = 4, WIDTH_REG = 5,
                   output                 o_valid,
                   output [32+WIDTH_REG:0] o_bypass, // { val, WIDTH_REG, data }
                   input  [WIDTH-1:0]     i_instr,
+                  input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
                   input                  i_rst_n,
                   input                  i_clk);
+
+`include "src/killf.v"
 
 localparam SIZE = $pow(2, WIDTH_MEM-1);
 localparam IT = 2'b01, ST = 2'b10, OT = 2'b00;
@@ -44,7 +47,7 @@ assign { val, uop, brmask, rd, pc, func, imm, op2, op1 } = instr;
 
 assign addr = op1 + imm;
 
-always @(uop, val)
+always @(*)
 begin
 	case(uop)
 		7'b0000011: FMT = IT;
@@ -55,16 +58,17 @@ begin
 	valOut = 1'b0;
 	if (FMT == IT)
 		valOut = val;
+	valOut = killf(brmask, i_brkill) ? 1'b0 : valOut;
 end
 
 always @(posedge i_clk)
 begin
 	// if S-type instruction and valid data
-	if (val && FMT == ST) begin
-		data[addr+0] <= op2[ 7: 0];
-		data[addr+1] <= op2[15: 8];
-		data[addr+2] <= op2[23:16];
-		data[addr+3] <= op2[31:24];
+	if (val && FMT == ST && ~killf(brmask, i_brkill)) begin
+		data[addr+0] = op2[ 7: 0];
+		data[addr+1] = op2[15: 8];
+		data[addr+2] = op2[23:16];
+		data[addr+3] = op2[31:24];
 		$writememh("Debug/ram.dat", data);
 	end
 end
