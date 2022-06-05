@@ -20,6 +20,7 @@ bind issue_slot qintf #(.WIDTH_PRY(1)) _qi1(
 	.uop    (UOPCode),
 	.brmask (BrMask),
 	.tag    (Tag),
+	.PRY    (PRY),
 	.valid  (val),
 	.RD     (RD),
 	.p2     (p2),
@@ -75,14 +76,14 @@ int i, j;
 begin
 	$write("    ");
 	for (j = 0; j < 2; j++)
-		$write("   uop mask tag val RD p2 RS1 p1 RS1");
+		$write("   uop mask tag valp2p1 RD RS1 RS1");
 	$display;
 
 	for (i = 0; i < PQUE1_W_SIZE; i += 2) begin
 		if (qi[i].valid | qi[i+1].valid) begin
 			$write("[%2d]", i);
 			for (j = 0; j < 2; j++) begin
-				$write(" | %b %b %b %h %b %b %b %d %d %d",
+				$write(" | %b %b %b %b %b %b %b %d %d %d",
 					qi[i+j].uop, qi[i+j].brmask,
 					qi[i+j].tag,
 					qi[i+j].PRY,

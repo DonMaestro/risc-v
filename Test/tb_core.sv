@@ -92,7 +92,7 @@ end
 
 initial
 begin
-        # 10000 $finish;
+        //# 10000 $finish;
 end
 
 initial

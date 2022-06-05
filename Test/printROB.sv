@@ -10,7 +10,7 @@ reg [ 7-1:0] sl_uop;
 reg [32-1:0] sl_imm;
 reg [ 7-1:0] sl_prdo, sl_prdn;
 
-bind bankSlot robtable #(14, 3) my_rb(
+bind bankSlot robtable #(21, 3) my_rb(
 	.valid  (val),
 	.busy   (busy),
 	.data   (data),
@@ -19,7 +19,7 @@ bind bankSlot robtable #(14, 3) my_rb(
 
 //static virtual robtable pc[PROB_W_SIZE];
 wire [31:4] pc[PROB_W_SIZE];
-static virtual robtable #(14, 3) rb[PROB_W_NBANK][PROB_W_SIZE];
+static virtual robtable #(21, 3) rb[PROB_W_NBANK][PROB_W_SIZE];
 
 for (isl = 0; isl < PROB_W_SIZE; isl++) begin
 	assign pc[isl] = `ROB.m_pc_b.slot[isl].r_data.data;
@@ -32,7 +32,7 @@ for (ibk = 0; ibk < PROB_W_NBANK; ibk++) begin
 	end
 end
 
-task printROB(virtual robtable #(14, 3) rb[0:3][0:7],
+task printROB(virtual robtable #(21, 3) rb[0:3][0:7],
               input logic [31:4]         pc[PROB_W_SIZE]);
 int i, j;
 begin
