@@ -12,8 +12,8 @@ wire rst_n = i_rst_n;
 localparam WIDTH_PRD = 7;
 localparam WIDTH_BRM = 3;
 localparam WIDTH_TAG = 3;
-localparam WIDTH_QUEUE_I = 7 + WIDTH_BRM + WIDTH_TAG + 0 + 3*WIDTH_PRD + 3;
-localparam WIDTH_QUEUE_O = 7 + WIDTH_BRM + WIDTH_TAG + 2 + 3*WIDTH_PRD + 0;
+//localparam WIDTH_QUEUE_O = WIDTH_BRM + WIDTH_TAG + 2 + 3*WIDTH_PRD + 0;
+localparam WIDTH_QUEUE_O = m_issue_alu.WIDTH_O;
 //assign { val, uop, brmask, rd, pc, func, imm, op2, op1 } = instr;
 localparam W_I_EXEC = 1 + 7 + WIDTH_BRM + WIDTH_PRD + 10 + 4*32;
 
@@ -292,8 +292,8 @@ generate
 		register r_brmaskrg2(brmaskrg2[r], en_core,
 		                     brmaskrg1[r], rst_n, clk);
 		defparam r_brmaskrg2.WIDTH = WIDTH_BRM;
-		register #(7) r_uoprg2(uoprg2[r], en_core,
-		                       uoprg1[r], rst_n, clk);
+//		register #(7) r_uoprg2(uoprg2[r], en_core,
+//		                       uoprg1[r], rst_n, clk);
 		register r_tagrg2(tagrg2, en_core, tagPkg, rst_n, clk);
 		defparam r_tagrg2.WIDTH = WIDTH_TAG;
 
@@ -386,20 +386,25 @@ generate
 
 	for (j = 0; j < 4; j = j + 1) begin
 		for (d = 0; d < 4; d = d + 1) begin: wdest
-			comparator #(WIDTH_PRD) cm_ps1(RS1eqWD[j][d], WDest[d], prs1[j]);
-			comparator #(WIDTH_PRD) cm_ps2(RS2eqWD[j][d], WDest[d], prs2[j]);
+			comparator cm_ps1(RS1eqWD[j][d], WDest[d], prs1[j]);
+			defparam cm_ps1.WIDTH = WIDTH_PRD;
+			comparator cm_ps2(RS2eqWD[j][d], WDest[d], prs2[j]);
+			defparam cm_ps2.WIDTH = WIDTH_PRD;
+
 			assign checkp1[j] = RS1eqWD[j][d];
 			assign checkp2[j] = RS2eqWD[j][d];
 		end
 
 		// valxxx = { val, p2, p1 }
-		assign valmem[j] = { ctrlrg2[j][1], ~p2x[j] | { checkp2[j], checkp1[j] } };
-		assign valalu[j] = { ctrlrg2[j][2], ~p2x[j] | { checkp2[j], checkp1[j] } };
+		assign valmem[j] = { ctrlrg2[j][1], ~p2x[j]
+		                     | { checkp2[j], checkp1[j] } };
+		assign valalu[j] = { ctrlrg2[j][2], ~p2x[j]
+		                     | { checkp2[j], checkp1[j] } };
 		// issue_slot = { UOPcode, brmask, tag, prd, prs2, prs1, val, p2, p1 };
-		assign issmem[j] = { uoprg2[j], brmaskrg2[j], tagrg2,
-		                     prgs[j], 1'b0, valmem[j] };
-		assign issalu[j] = { uoprg2[j], brmaskrg2[j], tagrg2,
-		                     prgs[j], ctrlrg2[j][4:3], valalu[j] };
+		assign issmem[j] = { brmaskrg2[j], tagrg2, prgs[j],
+		                     1'b0, valmem[j] };
+		assign issalu[j] = { brmaskrg2[j], tagrg2, prgs[j],
+		                     ctrlrg2[j][4:3], valalu[j] };
 	end
 endgenerate
 
@@ -467,24 +472,26 @@ register r_issue_alu1(.o_q(instr[2]),
 defparam r_issue_alu1.WIDTH = WIDTH_QUEUE_O;
 
 // reg state
-assign { UOPCode[0], BrMask[0], Tag[0], PRD[0], PRS2[0], PRS1[0] } = instr[0];
-assign { UOPCode[1], BrMask[1], Tag[1], PRD[1], PRS2[1], PRS1[1] } = instr[1];
-assign { UOPCode[2], BrMask[2], Tag[2], PRD[2], PRS2[2], PRS1[2] } = instr[2];
+assign { BrMask[0], Tag[0], PRD[0], PRS2[0], PRS1[0] } = instr[0];
+assign { BrMask[1], Tag[1], PRD[1], PRS2[1], PRS1[1] } = instr[1];
+assign { BrMask[2], Tag[2], PRD[2], PRS2[2], PRS1[2] } = instr[2];
 
 assign wdest4x = { {WIDTH_PRD{1'b0}}, PRD[2], PRD[1], PRD[0] };
 
-imm4 m_func_imm(.o_rdata0(Func_Imm[0]), .o_rdata1(Func_Imm[1]),
-                .o_rdata2(Func_Imm[2]), .o_rdata3(),
+imm4 m_func_imm(.o_rdata0({ UOPCode[0], Func_Imm[0] }),
+                .o_rdata1({ UOPCode[1], Func_Imm[1] }),
+                .o_rdata2({ UOPCode[2], Func_Imm[2] }),
+                .o_rdata3(),
                 .i_raddr0(Tag[0]), .i_raddr1(Tag[1]),
                 .i_raddr2(Tag[2]), .i_raddr3(Tag[3]),
                 .i_we(en_rename2 & ~w_AdrSrc),
                 .i_waddr(m_rob.tail),
-                .i_wdata0({ funcrg1[0], immrg1[0] }),
-                .i_wdata1({ funcrg1[1], immrg1[1] }),
-                .i_wdata2({ funcrg1[2], immrg1[2] }),
-                .i_wdata3({ funcrg1[3], immrg1[3] }),
+                .i_wdata0({ uoprg1[0], funcrg1[0], immrg1[0] }),
+                .i_wdata1({ uoprg1[1], funcrg1[1], immrg1[1] }),
+                .i_wdata2({ uoprg1[2], funcrg1[2], immrg1[2] }),
+                .i_wdata3({ uoprg1[3], funcrg1[3], immrg1[3] }),
                 .i_clk(clk));
-defparam m_func_imm.WIDTH = 32 + 10;
+defparam m_func_imm.WIDTH = 7 + 32 + 10;
 defparam m_func_imm.SIZE  = 32;
 
 // register

@@ -1,5 +1,6 @@
 `timescale 1 ns / 10 ps
-`include "Test/intr_queue.sv"
+
+`include "Test/intf_queue.sv"
 
 `include "src/queue4in2.v"
 `include "src/queue_arbiter.v"

@@ -4,7 +4,6 @@ localparam PQUE1_W_SIZE  = `QUE1.LENGTH;
 localparam PQUE2_W_SIZE  = `QUE2.LENGTH;
 
 bind issue_slot qintf _qi(
-	.uop    (UOPCode),
 	.brmask (BrMask),
 	.tag    (Tag),
 	.PRY    (PRY),
@@ -17,7 +16,6 @@ bind issue_slot qintf _qi(
 );
 
 bind issue_slot qintf #(.WIDTH_PRY(1)) _qi1(
-	.uop    (UOPCode),
 	.brmask (BrMask),
 	.tag    (Tag),
 	.PRY    (PRY),
@@ -47,15 +45,15 @@ int i, j;
 begin
 	$write("    ");
 	for (j = 0; j < 2; j++)
-		$write("   uop mask tag val RD p2 RS1 p1 RS1");
+		$write("  mask tag p v p2p1 RD RS1 RS1");
 	$display;
 
 	for (i = 0; i < PQUE2_W_SIZE; i++) begin
-		if (qi[i][0].valid | qi[i][1].valid) begin
+	//	if (qi[i][0].valid | qi[i][1].valid) begin
 			$write("[%2d]", i);
 			for (j = 0; j < 2; j++) begin
-					$write(" | %b %b %b %h %b %b %b %d %d %d",
-						qi[i][j].uop, qi[i][j].brmask,
+					$write(" | %b %b %h %b %b %b %d %d %d",
+						qi[i][j].brmask,
 						qi[i][j].tag,
 						qi[i][j].PRY,
 						qi[i][j].valid,
@@ -66,7 +64,7 @@ begin
 						qi[i][j].RS1);
 			end
 			$display;
-		end
+//		end
 	end
 end
 endtask
@@ -76,15 +74,15 @@ int i, j;
 begin
 	$write("    ");
 	for (j = 0; j < 2; j++)
-		$write("   uop mask tag valp2p1 RD RS1 RS1");
+		$write("  mask tag p v p2p1 RD RS1 RS1");
 	$display;
 
 	for (i = 0; i < PQUE1_W_SIZE; i += 2) begin
 		if (qi[i].valid | qi[i+1].valid) begin
 			$write("[%2d]", i);
 			for (j = 0; j < 2; j++) begin
-				$write(" | %b %b %b %b %b %b %b %d %d %d",
-					qi[i+j].uop, qi[i+j].brmask,
+				$write(" | %b %b %b %b %b %b %d %d %d",
+					qi[i+j].brmask,
 					qi[i+j].tag,
 					qi[i+j].PRY,
 					qi[i+j].valid,
