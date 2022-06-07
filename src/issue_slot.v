@@ -50,7 +50,7 @@ assign checkp2 = p2;
 generate
 	genvar i;
 	for (i = 0; i < 4; i = i + 1) begin
-		assign WDest[i] = i_WDest4x[(i+1)*WIDTH_REG:i*WIDTH_REG];
+		assign WDest[i] = i_WDest4x[(i+1)*WIDTH_REG-1:i*WIDTH_REG];
 		comparator #(WIDTH_REG) cm_rs1(RS1eqWD[i], WDest[i], RS1);
 		comparator #(WIDTH_REG) cm_rs2(RS2eqWD[i], WDest[i], RS2);
 		assign checkp1 = RS1eqWD[i];
