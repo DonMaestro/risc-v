@@ -8,26 +8,26 @@ module tb_issue_slot;
 
 localparam WIDTH_REG = 3;
 localparam WIDTH_TAG = 3;
-localparam WIDTH_BRM = 3;
-localparam WIDTH = 7 + WIDTH_BRM + WIDTH_TAG + 3*WIDTH_REG + 3;
+localparam WIDTH_BRM = 2;
 
-reg [WIDTH-1:0]       data;
-reg [4*WIDTH_REG-1:0] wdest;
-reg [WIDTH_REG-1:0]   pr1, pr2, prd;
-reg [WIDTH_BRM-1:0]   brkill;
+reg [m_slot.WIDTH_I-1:0] data;
+reg [4*WIDTH_REG-1:0]    wdest;
+reg [WIDTH_REG-1:0]      pr1, pr2, prd;
+reg [4-1:0]              brkill;
 reg grant, we, rst, clk;
 
 
-wire [WIDTH-1:0] rdata;
-wire [WIDTH-1:0] shiftdata;
+wire [m_slot.WIDTH_O-1:0] rdata;
+wire [m_slot.WIDTH_I-1:0] shiftdata;
 wire request;
 
 issue_slot m_slot(.o_request(request),
+                  .o_priority(),
                   .o_rslot(rdata),
                   .o_data(shiftdata),
                   .i_data(data),
                   .i_WDest4x(wdest),
-                  .i_BrKill(brkill),
+                  .i_brkill(brkill),
                   .i_grant(grant),
                   .i_en(we),
                   .i_rst_n(rst),
@@ -36,6 +36,44 @@ issue_slot m_slot(.o_request(request),
 defparam m_slot.WIDTH_REG = WIDTH_REG;
 defparam m_slot.WIDTH_TAG = WIDTH_TAG;
 defparam m_slot.WIDTH_BRM = WIDTH_BRM;
+defparam m_slot.WIDTH_PRY = 1;
+defparam m_slot.TAG_BANK  = 2'b01;
+
+always @(request) grant = request;
+
+initial
+begin
+	we  = 1'b1;
+	brkill = 4'b0000;
+
+	wdest = { 3'b000, 3'b000, 3'b000, 3'b001 };
+	prd = 3'b111;
+	pr2 = 3'b011;
+	pr1 = 3'b001;
+     // data = { BrMask, tag, RDst, RS2, RS1, PRY, val, p2, p1 }
+	data = { 2'b01, 3'b010, prd, pr2, pr1, 1'b0, 3'b110 };
+
+	#40
+	we  = 1'b0;
+
+	#40
+	we  = 1'b0;
+
+	#40
+	we  = 1'b1;
+
+	wdest = { 3'b000, 3'b000, 3'b000, 3'b001 };
+	prd = 3'b111;
+	pr2 = 3'b011;
+	pr1 = 3'b001;
+     // data = { BrMask, tag, RDst, RS2, RS1, PRY, val, p2, p1 }
+	data = { 2'b01, 3'b010, prd, pr2, pr1, 1'b0, 3'b110 };
+
+	#40
+	brkill = 4'b0111;
+	we  = 1'b0;
+
+end
 
 initial
 begin
@@ -43,41 +81,6 @@ begin
 	rst <= #1 1'b0;
 	rst <= #2 1'b1;
 
-	wdest = { 3'b110, 3'b110, 3'b110, 3'b110 };
-	prd = 3'b001;
-	pr2 = 3'b011;
-	pr1 = 3'b001;
-	we  = 1'b1;
-	grant = 1'b0;
-	brkill = 3'b010;
-	data = { 7'h14, 3'b101, 3'b010, prd, pr2, pr1, 3'b100 };
-
-	#40
-	wdest = { 3'b110, 3'b110, 3'b110, 3'b001 };
-	we = 1'b0;
-	grant = 1'b0;
-
-	#40
-	wdest = { 3'b110, 3'b110, 3'b011, 3'b000 };
-	we = 1'b0;
-	grant = 1'b0;
-
-	#40
-	wdest = { 3'b110, 3'b110, 3'b000, 3'b000 };
-	we = 1'b0;
-	grant = 1'b1;
-
-	#80
-	data = { 7'h14, 3'b101, 3'b010, prd, pr2, pr1, 3'b111 };
-	we = 1'b1;
-	grant = 1'b0;
-
-	#40
-	brkill = 3'b101;
-end
-
-initial
-begin
 	clk = 1'b0;
 	forever #20 clk = ~clk;
 end
@@ -87,6 +90,6 @@ begin
 	$dumpfile("Debug/issue_slot.vcd");
 	$dumpvars;
 
-	#1000 $finish;
+	#500 $finish;
 end
 endmodule

@@ -1,4 +1,4 @@
-// data = { UOPCode, BrMask, tag, RDst, RS2, RS1, val, p2, p1 }
+// data = { BrMask, tag, RDst, RS2, RS1, val, p2, p1 }
 
 module issue_slot #(parameter WIDTH_REG = 5, WIDTH_TAG = 5, WIDTH_BRM = 3,
                               WIDTH_PRY = 2, TAG_BANK = 2'b00,
