@@ -3,12 +3,12 @@
 // Ring Buffer
 //
 module ringbuf #(parameter WIDTH = 4, SIZE = 20)
-               (output [WIDTH-1:0] o_data,
-                output             o_empty, o_overflow,
-                input  [WIDTH-1:0] i_data,
-                input  i_re, i_we, i_rst_n, i_clk);
+               (output wor [WIDTH-1:0] o_data,
+                output                 o_empty, o_overflow,
+                input      [WIDTH-1:0] i_data,
+                input      i_re, i_we, i_rst_n, i_clk);
 
-localparam RST = { 1'b1, {(SIZE-1){1'b0}} };
+localparam [SIZE-1:0] RST = { {(SIZE-1){1'b0}}, 1'b1 };
 //localparam RST = 1;
 
 wire [SIZE:0] head, tail;
@@ -30,8 +30,8 @@ register #(1) r_we(overr, 1'b1, over, i_rst_n, i_clk);
 
 assign head[0] = head[SIZE];
 assign tail[0] = tail[SIZE];
-assign we_data = tail & { SIZE{i_we} };
-assign commit  = head & { SIZE{i_re} };
+assign we_data = tail[SIZE-1:0] & { SIZE{i_we} };
+assign commit  = head[SIZE-1:0] & { SIZE{i_re} };
 
 generate
 	genvar i;
@@ -57,6 +57,7 @@ generate
 		            .i_srst(commit[i]),
 		            .i_clk(i_clk));
 		defparam r_data.WIDTH = WIDTH;
+
 	end
 endgenerate
 
@@ -74,7 +75,7 @@ primitive over(q, state, r, w);
 		1 0 0 : 1;
 		1 0 1 : 1;
 		1 1 0 : 0;
-		1 1 1 : 0;
+		1 1 1 : 1;
 	endtable
 endprimitive
 
@@ -89,7 +90,7 @@ module slot #(parameter WIDTH = 32)
 reg [WIDTH-1:0] data;
 
 // read
-assign o_q = i_re ? data : { WIDTH{1'bZ} };
+assign o_q = i_re ? data : { WIDTH{1'b0} };
 
 // write
 always @(posedge i_clk)
