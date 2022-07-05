@@ -1,10 +1,11 @@
-module ram #(parameter ADDR_WIDTH = 32)(output [31:0] o_data,
-                                       input i_we,
-                                       input  [ADDR_WIDTH-1:0] i_addr,
-                                       input  [31:0] i_data,
-                                       input i_clk);
+module ram #(parameter ADDR_WIDTH = 32)
+           (output [31:0]           o_data,
+            input                   i_we,
+            input  [ADDR_WIDTH-1:0] i_addr,
+            input  [31:0]           i_data,
+            input                   i_clk);
 
-reg [31:0] m_ram[0:$pow(2, ADDR_WIDTH) - 1];
+reg [31:0] m_ram[0:2 ** ADDR_WIDTH - 1];
 
 initial
 begin
