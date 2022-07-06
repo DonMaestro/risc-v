@@ -12,7 +12,14 @@ module decode #(parameter WIDTH_BRM = 6)
                input wire [31:0]      i_instr,
                input wire             i_imask);
 
-`include "src/IType.v"
+//`include "src/IType.v"
+localparam [2:0] NO = 3'd0,
+                 RT = 3'd1,
+                 IT = 3'd2,
+                 ST = 3'd3,
+                 BT = 3'd4,
+                 UT = 3'd5,
+                 JT = 3'd6;
 
 wire [2:0] ImmSrc;
 
@@ -22,7 +29,7 @@ reg [6:0] funct7;
 reg [1:0] pry; // priority
 wire [1:0] queue;
 
-assign o_brmask = i_en_j ? i_brmask + 1 : i_brmask;
+assign o_brmask = i_en_j ? i_brmask + { {(WIDTH_BRM-1){1'b0}}, 1'b1} : i_brmask;
 
 assign o_uop = i_instr[6:0];
 
