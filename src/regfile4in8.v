@@ -9,7 +9,7 @@ module regfile4in8 #(WIDTH = 5)
                     input              i_clk);
                
 
-reg  [31:0] register[1:$pow(2, WIDTH)-1];
+reg  [31:0] register[1:(2 ** WIDTH)-1];
 
 /* read */
 
