@@ -27,8 +27,8 @@ end
 
 for (ibk = 0; ibk < PROB_W_NBANK; ibk++) begin
 	for (isl = 0; isl < PROB_W_SIZE; isl++) begin
-		initial rb[ibk][isl] = `ROB.bank[ibk].m_inst_b.
-			               slot[isl].m_slot.my_rb;
+		initial rb[ibk][isl] = `ROB._bank[ibk].m_inst_b.
+			               _slot[isl].m_slot.my_rb;
 	end
 end
 

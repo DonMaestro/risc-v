@@ -12,7 +12,7 @@ module rob #(parameter WIDTH_BANK = 3, WIDTH_REG = 7, WIDTH_BRM = 4,
             input  [31:0]             i_dis_pc,
             input  [4*WIDTH-1:0]      i_dis_data4x,
             input                     i_dis_we,
-            input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
+            input  [(2 ** WIDTH_BRM)-1:0] i_brkill,
             input  [3+WIDTH_BANK-1:0] i_rst_busy0,
             input  [3+WIDTH_BANK-1:0] i_rst_busy1,
             input  [3+WIDTH_BANK-1:0] i_rst_busy2,
@@ -20,11 +20,10 @@ module rob #(parameter WIDTH_BANK = 3, WIDTH_REG = 7, WIDTH_BRM = 4,
             input                     i_rst_n,
             input                     i_clk);
 
+localparam WIDTH_NBANK = 2;
 localparam NBANK = 4;
 localparam WIDTH_DT = WIDTH - 2 - WIDTH_BRM;
-localparam integer SIZE = $pow(2, WIDTH_BANK);
-
-localparam integer WIDTH_RSTB = 1 + WIDTH_BANK + $clog2(NBANK);
+localparam SIZE = 2 ** WIDTH_BANK;
 
 wire [WIDTH-1:0] new_data[0:NBANK-1];
 wire [WIDTH-1:0] commit[0:NBANK-1];
@@ -38,8 +37,8 @@ wire                 com_val[0:NBANK-1];
 wire                 com_busy[0:NBANK-1];
 wor  [SIZE-1:0]      rst_busy[0:NBANK-1];
 
-wire [NBANK-1:0]     val[0:SIZE-1];
-reg  [2-1:0]         ni;
+wire [SIZE-1:0] val[0:NBANK-1];
+reg  [2-1:0]     ni;
 
 wire we;
 wand re;
@@ -59,7 +58,7 @@ assign o_pc3 = { PC[i_tag3[WIDTH_BANK+2-1:2]], i_tag3[1:0], 2'b0 };
 wire [2:0] tgN = i_tag1[WIDTH_BANK+2-1:2] + 1;
 always @(*)
 begin
-	casex(val[tgN])
+	casex({ val[3][tgN], val[2][tgN], val[1][tgN], val[0][tgN] })
 		4'b0001: ni = 2'b11;
 		4'b001?: ni = 2'b10;
 		4'b01??: ni = 2'b01;
@@ -88,7 +87,7 @@ generate
 	genvar i, j;
 
 	assign re = ~empty;
-	for (i = 0; i < NBANK; i = i + 1) begin: bank
+	for (i = 0; i < NBANK; i = i + 1) begin: _bank
 		// val exc uops prd brmask
 		assign new_data[i] = i_dis_data4x[(i+1)*WIDTH-1:i*WIDTH];
 
@@ -98,6 +97,7 @@ generate
 		assign rst_busy[i] = rstBusy(i_rst_busy3, i[1:0]);
 
 		bank m_inst_b(.o_pkg(commit[i]),
+		              .o_val(val[i]),
 		              .i_pkg(new_data[i]),
 		              .i_head(head),
 		              .i_tail(tail),
@@ -129,24 +129,18 @@ generate
 		mux2in1 m_comprd(com_prd[i],
 			com_val[i], prdn[i], prdo[i] );
 		defparam m_comprd.WIDTH = WIDTH_REG;
-
-		// read valid bits
-		for (j = 0; j < SIZE; j = j + 1) begin
-			assign val[j][i] = m_inst_b.slot[j].m_slot.val;
-		end
 	end
-
-	for (i = 0; i < SIZE; i = i + 1) begin
+	for (i = 0; i < SIZE; i = i + 1) begin: PC_read
 		assign PC[i] = m_pc_b.slot[i].r_data.data;
 	end
 endgenerate
 
 function [SIZE-1:0] rstBusy(
-	input [3+WIDTH_BANK-1:0]  i_rst_busytg,
-	input [$clog2(NBANK)-1:0] i_NBank);
-	reg                     en;
-	reg [WIDTH_BANK-1:0]    tag;
-	reg [$clog2(NBANK)-1:0] bank;
+	input [3+WIDTH_BANK-1:0] i_rst_busytg,
+	input [WIDTH_NBANK-1:0]  i_NBank);
+	reg                   en;
+	reg [WIDTH_BANK-1:0]  tag;
+	reg [WIDTH_NBANK-1:0] bank;
 	begin
 		rstBusy = { SIZE{1'b0} };
 		{ en, tag, bank } = i_rst_busytg;
@@ -164,32 +158,31 @@ defparam m_encoder.SIZE = SIZE;
 
 endmodule
 
-
 /**
  * bank
  */
 module bank #(parameter SIZE = 32, WIDTH_DT = 39, WIDTH_REG = 7, WIDTH_BRM = 4,
                         WIDTH = 2 + WIDTH_DT + WIDTH_BRM)
             (output [WIDTH-1:0]   o_pkg,
+             output [SIZE-1:0]    o_val,
              input  [WIDTH-1:0]   i_pkg,
              input  [SIZE-1:0]    i_head, i_tail,
-             input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
+             input  [(2 ** WIDTH_BRM)-1:0] i_brkill,
              input  [SIZE-1:0]    i_rst_busy,
              input  i_re, i_we, i_rst_n, i_clk);
 
 wire [WIDTH-1:0] pkg[0:SIZE-1];
 wor  [WIDTH-1:0] pkg_head;
 
-wire            rstEn;
-wire [SIZE-1:0] rstBusy;
-
 // output
 assign o_pkg = pkg_head;
 
 generate
 	genvar i;
-	for (i = 0; i < SIZE; i = i + 1) begin: slot
+	for (i = 0; i < SIZE; i = i + 1) begin: _slot
 		assign pkg_head = pkg[i];
+
+		assign o_val[i] = pkg[i][WIDTH-1];
 
 		bankSlot m_slot(.o_pkg(pkg[i]),
 		                .i_pkg(i_pkg),
@@ -208,7 +201,6 @@ endgenerate
 
 endmodule
 
-
 /**
  * slot
  */
@@ -216,14 +208,12 @@ module bankSlot #(parameter WIDTH_DT = 39, WIDTH_REG = 7, WIDTH_BRM = 4,
                         WIDTH = 2 + WIDTH_DT + WIDTH_BRM)
             (output [WIDTH-1:0]     o_pkg, 
              input  [WIDTH-1:0]     i_pkg, 
-             input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
+             input  [(2 ** WIDTH_BRM)-1:0] i_brkill,
              input                  i_re, i_we,
              input                  i_rst_busy,
              input                  i_rst_n, i_clk);
 
 `include "src/killf.v"
-
-wire [WIDTH-1:0]  pkg;
 
 wire                 val,    val_new, val_rst;
 wire                 busy,   busy_new;
@@ -231,13 +221,23 @@ wire [WIDTH_DT-1:0]  data,   data_new;
 wire [WIDTH_BRM-1:0] brmask, brmask_new;
 
 // output
-assign o_pkg = i_re ? pkg : { WIDTH{1'b0} };
-
-
-assign pkg = { val, busy, data, brmask };
+assign o_pkg = i_re ? { val, busy, data, brmask } : { WIDTH{1'b0} };
 
 assign val_new = i_pkg[WIDTH_DT+WIDTH_BRM+1];
 assign val_rst = killf(brmask, i_brkill);
+/*
+reg [(2 ** WIDTH_BRM)-1:0] dmask;
+reg killf;
+
+assign val_rst = killf;
+
+always @(brmask, i_brkill)
+begin
+	//dmask = 1 << brmask;
+	dmask = brmask;
+	killf = |(dmask & i_brkill);
+end
+*/
 
 assign busy_new = i_pkg[WIDTH_DT+WIDTH_BRM];
 
