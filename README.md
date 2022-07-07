@@ -21,7 +21,11 @@ $ git clone https://github.com/DonMaestro/risc-v.git
 $ cd risc-v
 $ make build
 ```
+
+## DOCUMENTATION(EN/[UA][4])
+
 [1]: http://iverilog.icarus.com/
 [2]: https://github.com/riscv-collab/riscv-gnu-toolchain
 [3]: https://github.com/DonMaestro/elfbin.git
+[4]: docs/modules_ua/README.md
 
