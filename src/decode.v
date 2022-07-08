@@ -3,7 +3,7 @@ module decode #(parameter WIDTH_BRM = 6)
                output reg [14:0]      o_regs,
                output reg [ 9:0]      o_func,
                output reg [ 4:0]      o_ctrl,
-               output     [31:0]      o_imm,
+               output reg [31:0]      o_imm,
                output reg             o_en_j,
                output [WIDTH_BRM-1:0] o_brmask,
                input wire             i_en_j,
@@ -21,7 +21,7 @@ localparam [2:0] NO = 3'd0,
                  UT = 3'd5,
                  JT = 3'd6;
 
-wire [2:0] ImmSrc;
+reg [2:0] ImmSrc;
 
 reg [4:0] drd, drs1, drs2;
 reg [2:0] funct3;
@@ -46,12 +46,40 @@ begin
 	end
 end
 
-InstrDecoder m_decode(.o_ImmSrc(ImmSrc),
-                      .i_Op(i_instr[6:0]));
+// Instruction type decode
+always @(i_instr[6:0])
+begin
+	casez (i_instr[6:0])
+		7'b011_0011: ImmSrc = RT;
 
-signExtend m_signEntend(.o_data(o_imm),
-                        .i_en(ImmSrc),
-                        .i_data(i_instr[31:7]));
+		7'b001_0011: ImmSrc = IT;
+		7'b000_0011: ImmSrc = IT;
+		7'b110_0111: ImmSrc = IT;
+		7'b111_0011: ImmSrc = IT;
+
+		7'b010_0011: ImmSrc = ST;
+		7'b110_0011: ImmSrc = BT;
+		7'b110_1111: ImmSrc = JT;
+		7'b0?1_0111: ImmSrc = UT;
+		default:     ImmSrc = NO;
+	endcase
+end
+
+// decode imm
+always @(ImmSrc, i_instr[31:7])
+begin
+	case (ImmSrc)
+		RT: o_imm = { { 20{i_instr[31]} }, i_instr[31:25], 5'b0 };
+		IT: o_imm = { { 20{i_instr[31]} }, i_instr[31:20] };
+		ST: o_imm = { { 20{i_instr[31]} }, i_instr[31:25], i_instr[11:7] };
+		BT: o_imm = { { 20{i_instr[31]} }, i_instr[7],
+		                        i_instr[30:25], i_instr[11:8], 1'b0 };
+		JT: o_imm = { { 12{i_instr[31]} }, i_instr[19:12],
+		                        i_instr[20], i_instr[30:21], 1'b0 };
+		UT: o_imm = { i_instr[31:12], 12'b0 };
+		default: o_imm = 31'bX;
+	endcase
+end
 
 type_queue m_type_queue(.o_type(queue),
                         .i_en(i_imask),
