@@ -1,8 +1,6 @@
 `timescale 1 ns / 1 ns
 `include "src/register.v"
 `include "src/decode.v"
-`include "src/InstrDecoder.v"
-`include "src/signExtend.v"
 
 module tb_decode;
 

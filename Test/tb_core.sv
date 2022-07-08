@@ -12,8 +12,6 @@
 `include "src/icache_m.v"
 
 `include "src/decode.v"
-`include "src/InstrDecoder.v"
-`include "src/signExtend.v"
 
 `include "src/freelist.v"
 `include "src/rename.v"
