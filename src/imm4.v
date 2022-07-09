@@ -1,15 +1,15 @@
-module imm4 #(parameter SIZE = 32, WIDTH = 32)
-            (output [WIDTH-1:0]        o_rdata0, o_rdata1,
-             output [WIDTH-1:0]        o_rdata2, o_rdata3,
-             input  [$clog2(SIZE)-1:0] i_raddr0, i_raddr1,
-             input  [$clog2(SIZE)-1:0] i_raddr2, i_raddr3,
-             input                     i_we,
-             input  [SIZE/4-1:0]       i_waddr,
-             input  [WIDTH-1:0]        i_wdata0, i_wdata1,
-             input  [WIDTH-1:0]        i_wdata2, i_wdata3,
+module imm4 #(parameter WIDTH_ADDR = 5, WIDTH = 32)
+            (output [WIDTH-1:0]      o_rdata0, o_rdata1,
+             output [WIDTH-1:0]      o_rdata2, o_rdata3,
+             input  [WIDTH_ADDR-1:0] i_raddr0, i_raddr1,
+             input  [WIDTH_ADDR-1:0] i_raddr2, i_raddr3,
+             input                   i_we,
+             input  [(2 ** WIDTH_ADDR)/4-1:0]  i_waddr,
+             input  [WIDTH-1:0]      i_wdata0, i_wdata1,
+             input  [WIDTH-1:0]      i_wdata2, i_wdata3,
              input  i_clk);
 
-localparam integer WIDTH_ADDR = $clog2(SIZE);
+localparam SIZE = 2 ** WIDTH_ADDR;
 integer i;
 
 reg [WIDTH-1:0] data[0:SIZE-1];
