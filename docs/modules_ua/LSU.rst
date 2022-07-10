@@ -1,14 +1,33 @@
 Load/Store Unit
 ===============
 
-Store Instruction
------------------
+Store Adrress Instruction
+-------------------------
+
+- **A**\llocated
+- **val**\id address
+- **addr**\ess
+- **V**\irtual address
+- data **avai**\lability
+
+Виконана Інструкція може видалитися з черги LAQ.
+
+- Промах TLB;
+- Збіг в черзі SAQ(Store Address Queue), але відсутні дані;
+- Промах кешу;
+- Вбивство.
+
+Store Data Instruction
+----------------------
+
+Дані інструкцій завантаження зберігаються окремо в модулі пам'яті з асинхронним
+входом читання.
 
 Load Instruction
 ----------------
 
 Інструкція потрапляє в модуль. Обраховується адреса і записується
-в чергу LAQ(Load Address Queue).
+в чергу SAQ(Load Address Queue).
 
 - **A**\llocated
 - **val**\id address
@@ -17,8 +36,8 @@ Load Instruction
 - cache **M**\iss
 - **rd** (destination register)
 
-Виконана Інструкція може видалитися з черги LAQ.
-Інструкцій позначається виконаною якщо 
+Виконана інструкція може видалитися з черги LAQ.
+Нижче наведені причини затримки через які інструкція вважається не виконаною.
 
 - Промах TLB;
 - Збіг в черзі SAQ(Store Address Queue), але відсутні дані;
