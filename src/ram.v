@@ -1,6 +1,6 @@
 module ram #(parameter WIDTH_ADDR = 8,
                        WIDTH_DATA = 8,
-                       SIZE = 2 ** WIDTH_DATA)
+                       SIZE = 2 ** WIDTH_ADDR)
            (output [WIDTH_DATA-1:0] o_data,
             input                   i_we,
             input  [WIDTH_ADDR-1:0] i_addr,
@@ -11,7 +11,7 @@ reg [WIDTH_DATA-1:0] m_ram[0:SIZE-1];
 
 always @(posedge i_clk)
 begin
-	if(i_we)
+	if (i_we)
 		m_ram[i_addr] <= i_data;
 end
 
