@@ -1,4 +1,4 @@
-module freelist #(parameter WIDTH = 5, SIZE = $pow(2, WIDTH), STNUM = 0)
+module freelist #(parameter WIDTH = 5, SIZE = 2 ** WIDTH, STNUM = 0)
                 (output [WIDTH-1:0] o_data,
                  input  [WIDTH-1:0] i_data,
                  input              i_re,
@@ -16,7 +16,7 @@ begin
 		head <= { WIDTH{1'b0} };
 		tail <= { WIDTH{1'b0} };
 		for (i = 0; i < SIZE; i = i + 1) begin
-			data[i] = i + STNUM;
+			data[i] <= i + STNUM;
 		end
 	end else begin
 		if (i_re) begin
