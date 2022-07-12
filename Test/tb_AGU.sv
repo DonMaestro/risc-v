@@ -6,6 +6,7 @@
 `include "src/ram.v"
 `include "src/AGU/SAQ.v"
 `include "src/AGU/LAQ.v"
+`include "src/AGU/comparator.v"
 `include "src/AGU/AGU.v"
 
 module tb_AGU;
@@ -58,7 +59,7 @@ AGU m_AGU(//regFile
           .i_rst_n (rst_n),
           .i_clk   (clk));
 defparam m_AGU.WIDTH_REG = WIDTH_REG;
-defparam m_AGU.WIDTH_BRM = WIDTH_BRM;
+defparam m_AGU.WIDTH_BRM = WIDTH_TAG;
 defparam m_AGU.WIDTH_TAG = WIDTH_TAG;
 defparam m_AGU.WIDTH_MEM = WIDTH_MEM;
 
@@ -93,7 +94,7 @@ begin
 	imm = 32'h1;
 
 	val = 2'b01;
-	uop  = 7'b0000011; //lw
+	uop = 7'b0000011; //lw
 	tag = 4'h1;
 	op1 = 32'h2;
 	op2 = 32'h3;
@@ -101,7 +102,7 @@ begin
 
 	#40
 	val = 2'b01;
-	uop  = 7'b0100011; //sw
+	uop = 7'b0100011; //sw
 	tag = 4'h2;
 	op1 = 32'h3;
 	// address = 0x4;
@@ -109,14 +110,14 @@ begin
 
 	#40
 	val = 2'b01;
-	uop  = 7'b0000011; //lw
+	uop = 7'b0000011; //lw
 	tag = 4'h3;
 	// address not change
 	rd = 7'h4;
 
 	#40
 	val = 2'b10;
-	uop  = 7'b0100011; //sw
+	uop = 7'b0100011; //sw
 	tag = 4'h2;
 	op1 = 32'h3;
 	// address = 0x4;
