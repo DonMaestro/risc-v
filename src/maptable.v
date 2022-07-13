@@ -11,11 +11,11 @@ module maptable #(parameter WIDTH = 5)
                  input                 i_save_en, i_return,
                  input                 i_we, i_rst_n, i_clk);
 
-localparam SIZE = $pow(2, WIDTH);
+localparam SIZE = 32;
 integer j;
 
-reg  [WIDTH-1:0] ram[0:31];
-reg  [WIDTH-1:0] ram_save[0:31];
+reg  [WIDTH-1:0] ram[1:SIZE-1];
+reg  [WIDTH-1:0] ram_save[1:SIZE-1];
 
 wire [WIDTH-1:0] wdata[0:3];
 wire [4:0] addr[0:11];
@@ -34,23 +34,23 @@ generate
 	end
 
 	for (i = 0; i < 12; i = i + 1) begin
-		assign o_data12x[(i+1)*WIDTH-1:i*WIDTH] = ram[addr[i]];
+		assign o_data12x[(i+1)*WIDTH-1:i*WIDTH] = addr[i] ? ram[addr[i]] : {WIDTH{1'b0}};
 	end
 endgenerate
 
 always @(posedge i_clk, negedge i_rst_n)
 begin
 	if (!i_rst_n) begin
-		o_busy = 1'b0;
-		for (j = 0; j < SIZE; j = j + 1) begin
-			ram[j] = { WIDTH{1'b0} };
+		o_busy <= 1'b0;
+		for (j = 1; j < SIZE; j = j + 1) begin
+			ram[j] <= { WIDTH{1'b0} };
 		end
 		$writememh("Debug/mtab_rst.dat", ram);
 	end else begin
 		if (i_return) begin
 			o_busy <= 1'b0;
 
-			for (j = 0; j < SIZE; j = j + 1) begin
+			for (j = 1; j < SIZE; j = j + 1) begin
 				ram[j] <= ram_save[j];
 			end
 		end
@@ -58,7 +58,7 @@ begin
 		if (i_save_en) begin
 			o_busy <= 1'b1;
 
-			for (j = 0; j < SIZE; j = j + 1) begin
+			for (j = 1; j < SIZE; j = j + 1) begin
 				ram_save[j] <= ram[j];
 			end
 
@@ -75,7 +75,6 @@ begin
 			end
 		end
 	end
-	ram[0] = { WIDTH{1'b0} };
 end
 
 endmodule
