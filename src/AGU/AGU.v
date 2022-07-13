@@ -51,6 +51,12 @@ wire [WIDTH_MEM-1:0] paddr;
 
 reg we_saq, we_sdq, we_laq;
 
+wire [WIDTH_SQ-1:0] saq_tail;
+wire [WIDTH_SQ-1:0] saq_waddrD;
+wire                saq_weD;
+
+wire [WIDTH_LQ-1:0] laq_tail;
+
 wire                 ent_type;
 wire [WIDTH_MEM-1:0] ent_addr;
 wire [WIDTH_TAG-1:0] ent_tag;
@@ -68,9 +74,16 @@ reg                  dcache_kill;
 wire [WIDTH_MEM-1:0] dcache_addr;
 
 // wire memory
+integer j;
 
 wire comp_saq, comp_laq;
 wire                wb_type;
+
+reg we_rf;
+
+reg                laq_S;
+reg [WIDTH_LQ-1:0] laq_S_addr;
+
 // wire writeback
 wire       [32-1:0] sdq_data;
 wire [WIDTH_SQ-1:0] sdq_addr;
@@ -128,18 +141,24 @@ defparam mux_dcache_addr.WIDTH = WIDTH_MEM;
 SAQ m_SAQ(.o_entries (entries_saq),  // entries_saq all entries
           .o_entry   (),
           // ring buffer ports
+          .o_tail    (saq_tail),
           .o_empty   (),
           .o_overflow(),
           .i_re      (1'b0),
+          // input
+          // new entry
           .i_we      (we_saq),
-          // write new data for the table
           .i_val     (1'b1),
+          .i_tag     (tag),
+          // addr
+          .i_weV     (we_saq),
+          .i_waddrV  (saq_tail),
           .i_addr    (paddr),
           .i_V       (TLBms),  // V set when TLB miss
-          .i_tag     (tag),
-          .i_aval    (val[1]), // data valid
-          // set/reset flags
-          .i_set_aval(),
+          // data availability
+          .i_weD     (saq_weD),
+          .i_waddrD  (saq_waddrD),
+          // clk
           .i_rst_n   (i_rst_n),
           .i_clk     (i_clk));
 defparam m_SAQ.WIDTH_TAG  = WIDTH_TAG;
@@ -151,18 +170,25 @@ LAQ m_LAQ(.o_entries  (entries_laq),  // all entries
           .o_wkup_addr(),
           .o_wkup_val (),
           // ring buffer
+          .o_tail    (laq_tail),
           .o_empty   (),
           .o_overflow(),
           .i_re      (1'b0),
           .i_we      (we_laq),
           // input data for the table
           .i_val     (1'b0),
-          .i_addr    (paddr),
-          .i_V       (TLBms), // V set when TLB miss
           .i_rd      (rd),
           .i_tag     (tag),
+          // addr
+          .i_weV     (we_laq),
+          .i_waddrV  (laq_tail),
+          .i_addr    (paddr),
+          .i_V       (TLBms),  // V set when TLB miss
           // set/reset flags
-          .i_setM    (),
+          .i_weS     (laq_S),
+          .i_waddrS  (laq_S_addr),
+          .i_weM     (1'b0),
+          .i_waddrM  (),
           .i_rst_n   (i_rst_n),
           .i_clk     (i_clk));
 defparam m_LAQ.WIDTH_REG  = WIDTH_REG;
@@ -212,11 +238,12 @@ defparam r_ent_rd.WIDTH = WIDTH_REG;
 
 wire [WIDTH_REG-1:0] comp_rd;
 wire [m_comp.DATA_ENT-1:0] entry;
+wire [WIDTH_SQ-1:0]  saq_addr;
 assign entry = { ent_type, ent_addr, ent_tag };
 
 comparator m_comp(.o_comp_saq (comp_saq),
                   .o_comp_laq (comp_laq),
-                  .o_sdq_addr (),
+                  .o_saq_addr (saq_addr),
                   .o_rd       (comp_rd),
                   .i_entry    (entry),
                   .entries_laq(entries_laq),
@@ -232,17 +259,17 @@ defparam m_comp.WIDTH_TAG  = WIDTH_TAG;
 //defparam m_comp.DATA_SAQ = 4 + 32 + WIDTH_TAG;
 //defparam m_comp.DATA_LAQ = 4 + 32 + WIDTH_REG + WIDTH_TAG;
 
-integer j;
-
-reg we_rf;
-
+assign saq_weD = ent_we;
+assign saq_waddrD = saq_addr;
 always @(*)
 begin
 	if (ent_type) begin  // Store type
 		we_rf = 1'b0;
 		dcache_kill = killf(ent_tag, i_brkill);
 	end else begin  // Load type
-		we_rf = ent_val & ~comp_saq;
+		we_rf      = ent_val && !comp_saq;
+		laq_S      = ent_val &&  comp_saq;
+		laq_S_addr = 1;
 		dcache_kill = ent_val & comp_saq | killf(ent_tag, i_brkill);
 	end
 end
@@ -259,7 +286,7 @@ end
  * destination register(rd)
  */
 register #(1)  r_wb_type(wb_type, 1'b1, ent_type, i_rst_n, i_clk);
-register r_sdq_addr(sdq_addr,  ent_we, {WIDTH_SQ{1'b0}}, i_rst_n, i_clk);
+register r_sdq_addr(sdq_addr,  ent_we,  saq_addr, i_rst_n, i_clk);
 defparam r_sdq_addr.WIDTH = WIDTH_SQ;
 register #(1)  r_sdq_we  (sdq_we,    1'b1,   ent_we,   i_rst_n, i_clk);
 register #(32) r_sdq_data(sdq_wdata, ent_we, ent_data, i_rst_n, i_clk);

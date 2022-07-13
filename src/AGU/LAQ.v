@@ -1,21 +1,33 @@
 module LAQ #(parameter WIDTH_REG = 5, WIDTH_TAG = 5,
                        WIDTH_ADDR = 32,
                        WIDTH = 4, SIZE = 2 ** WIDTH,
-                       WIDTH_DATA = 4 + WIDTH_ADDR + WIDTH_REG + WIDTH_TAG)
+                       WIDTH_DATA = 5 + WIDTH_ADDR + WIDTH_REG + WIDTH_TAG)
            (output [WIDTH_DATA * SIZE - 1:0] o_entries,
             output [WIDTH_DATA - 1:0]        o_entry,
             output reg [WIDTH_ADDR - 1:0]    o_wkup_addr,
             output reg                       o_wkup_val,
             // ring buffer
             output                 o_empty, o_overflow,
-            input                  i_re, i_we,
-            // input data for the table
+            output [WIDTH-1:0]     o_tail,
+            input                  i_re,
+            input                  i_we,
+            // input
+            // new entry
             input                  i_val,
-            input [WIDTH_ADDR-1:0] i_addr,
-            input                  i_V,
             input [WIDTH_REG-1:0]  i_rd,
             input [WIDTH_TAG-1:0]  i_tag,
-            input                  i_setM,
+            // addr
+            input                  i_weV,
+            input [WIDTH-1:0]      i_waddrV,
+            input [WIDTH_ADDR-1:0] i_addr,
+            input                  i_V,
+            // data availability
+            input                  i_weS,
+            input [WIDTH-1:0]      i_waddrS,
+            //
+            input                  i_weM,
+            input [WIDTH-1:0]      i_waddrM,
+            // clk
             input                  i_rst_n,
             input                  i_clk);
 
@@ -30,6 +42,7 @@ reg                  A   [0:SIZE-1];
 reg                  val [0:SIZE-1];
 reg [WIDTH_ADDR-1:0] addr[0:SIZE-1];
 reg                  V   [0:SIZE-1];
+reg                  S   [0:SIZE-1];
 reg                  M   [0:SIZE-1];
 reg [WIDTH_REG-1:0]  rd  [0:SIZE-1];
 reg [WIDTH_TAG-1:0]  tag [0:SIZE-1];
@@ -77,12 +90,23 @@ begin
 		if (i_we) begin
 			A   [tail] <= 1'b1;
 			val [tail] <= i_val;
-			addr[tail] <= i_addr;
-			V   [tail] <= i_V;
+			S   [tail] <= 1'b0;
 			M   [tail] <= 1'b0;
 			rd  [tail] <= i_rd;
 			tag [tail] <= i_tag;
 		end
+
+		if (i_weV) begin
+			addr[i_waddrV] <= i_addr;
+			V   [i_waddrV] <= i_V;
+		end
+
+		if (i_weS) begin
+			S   [i_waddrS] <= 1'b1;
+		end
+
+		if (i_weM)
+			M   [i_waddrM] <= 1'b1;
 	end
 end
 
@@ -91,6 +115,7 @@ assign o_entry = {
 	val [head],
 	addr[head],
 	V   [head],
+	S   [head],
 	M   [head],
 	rd  [head],
 	tag [head]
@@ -105,6 +130,7 @@ generate
 			val [i],
 			addr[i],
 			V   [i],
+			S   [i],
 			M   [i],
 			rd  [i],
 			tag [i]
