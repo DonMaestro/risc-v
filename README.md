@@ -1,17 +1,20 @@
 
-# RISC-V32 Processor
+# Superscalar RISC-V32 Processor
 
 ![Core](docs/img/core.png)
 
-## Dependancies
+[RISC-V Manual](https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf)
+
+## Dependencies
 ### Requirements
 
-- [iverilog][1] or Modelsim
+- Modelsim or [iverilog][1](no tests)
 
 ### Recommends
 
 - c
-- [riscv-gnu-toolchain][2]
+- riscv64-elf-gcc
+- riscv32-elf-binutils or [riscv-gnu-toolchain][2]
 - [elfbin][3]
 
 ## Building
