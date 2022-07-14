@@ -10,6 +10,7 @@ vsim.wlf
 
 # c
 *.c
+*.s
 *.o
 *.out
 
