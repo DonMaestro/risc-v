@@ -2,13 +2,12 @@ module LAQ #(parameter WIDTH_REG = 5, WIDTH_TAG = 5,
                        WIDTH_ADDR = 32,
                        WIDTH = 4, SIZE = 2 ** WIDTH,
                        WIDTH_DATA = 5 + WIDTH_ADDR + WIDTH_REG + WIDTH_TAG)
-           (output [WIDTH_DATA * SIZE - 1:0] o_entries,
+           (output [WIDTH_DATA * SIZE - 1:0] o_cells,
             output [WIDTH_DATA - 1:0]        o_entry,
             output reg [WIDTH_ADDR - 1:0]    o_wkup_addr,
             output reg                       o_wkup_val,
             // ring buffer
             output                 o_empty, o_overflow,
-            output [WIDTH-1:0]     o_tail,
             input                  i_re,
             input                  i_we,
             // input
@@ -22,11 +21,14 @@ module LAQ #(parameter WIDTH_REG = 5, WIDTH_TAG = 5,
             input [WIDTH_ADDR-1:0] i_addr,
             input                  i_V,
             // data availability
-            input                  i_weS,
+            input                  i_setS,
             input [WIDTH-1:0]      i_waddrS,
             //
             input                  i_weM,
             input [WIDTH-1:0]      i_waddrM,
+            input                  i_M,
+            //
+            input                  i_r_wu,
             // clk
             input                  i_rst_n,
             input                  i_clk);
@@ -34,6 +36,7 @@ module LAQ #(parameter WIDTH_REG = 5, WIDTH_TAG = 5,
 integer j;
 
 reg [WIDTH-1:0] head, tail;
+reg [WIDTH-1:0] wu_addr;
 
 wire comp, overr;
 reg  over;
@@ -90,6 +93,8 @@ begin
 		if (i_we) begin
 			A   [tail] <= 1'b1;
 			val [tail] <= i_val;
+			addr[tail] <= i_addr;
+			V   [tail] <= i_V;
 			S   [tail] <= 1'b0;
 			M   [tail] <= 1'b0;
 			rd  [tail] <= i_rd;
@@ -101,12 +106,17 @@ begin
 			V   [i_waddrV] <= i_V;
 		end
 
-		if (i_weS) begin
+		if (i_setS) begin
 			S   [i_waddrS] <= 1'b1;
 		end
 
 		if (i_weM)
-			M   [i_waddrM] <= 1'b1;
+			M   [i_waddrM] <= i_M;
+
+		if (i_r_wu) begin
+			S   [wu_addr] <= 1'b0;
+			M   [wu_addr] <= 1'b0;
+		end
 	end
 end
 
@@ -125,7 +135,7 @@ generate
 	genvar i;
 
 	for (i = 0; i < SIZE; i = i + 1) begin
-		assign o_entries[(i+1)*WIDTH_DATA-1:i*WIDTH_DATA] = {
+		assign o_cells[(i+1)*WIDTH_DATA-1:i*WIDTH_DATA] = {
 			A   [i],
 			val [i],
 			addr[i],
@@ -142,10 +152,11 @@ integer g;
 always @(*)
 begin
 	o_wkup_val = 1'b0;
-	for (g = 0; g < SIZE; g = g + 1) begin
-		o_wkup_val = o_wkup_val | A[g] & val[g];
-		if (A[g] && (val[g] || V[g] || M[g])) begin
-			o_wkup_addr = g[WIDTH-1:0];
+	for (g = SIZE - 1; g >= 0; g = g - 1) begin
+		o_wkup_val = o_wkup_val | (A[g] & (V[g] | S[g] | M[g]));
+		if (A[g] & (V[g] | S[g] | M[g])) begin
+			o_wkup_addr = addr[g];
+			wu_addr = g[WIDTH-1:0];
 		end
 	end
 end

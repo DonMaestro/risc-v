@@ -40,8 +40,6 @@ wire [ 9:0] func;
 wire [ 1:0] val;  // valid { data, addr }
 wire [WIDTH_REG-1:0] rd; // result register
 
-reg vali;
-
 wire [WIDTH_MEM-1:0] naddr, qaddr, laddr, saddr;
 wire [WIDTH_MEM-1:0] vaddr;
 
@@ -49,26 +47,25 @@ wire TLBms;
 
 wire [WIDTH_MEM-1:0] paddr;
 
+reg val_wu;
 reg we_saq, we_sdq, we_laq;
 
-wire [WIDTH_SQ-1:0] saq_tail;
-wire [WIDTH_SQ-1:0] saq_waddrD;
-wire                saq_weD;
+wire                saq_wkup_val;
+wire                laq_wkup_val;
 
-wire [WIDTH_LQ-1:0] laq_tail;
+wire [WIDTH_SQ-1:0] saq_waddrD;
+wire                saq_setD;
 
 wire                 ent_type;
 wire [WIDTH_MEM-1:0] ent_addr;
 wire [WIDTH_TAG-1:0] ent_tag;
 
-wire [32-1:0] ent_data;
 wire          ent_we;
 
 wire          ent_val;
-wire [WIDTH_REG-1:0] ent_rd;
 
-wire [m_SAQ.WIDTH_DATA * m_SAQ.SIZE - 1:0] entries_saq;
-wire [m_LAQ.WIDTH_DATA * m_LAQ.SIZE - 1:0] entries_laq;
+wire [m_SAQ.WIDTH_DATA * m_SAQ.SIZE - 1:0] cells_saq;
+wire [m_LAQ.WIDTH_DATA * m_LAQ.SIZE - 1:0] cells_laq;
 
 reg                  dcache_kill;
 wire [WIDTH_MEM-1:0] dcache_addr;
@@ -76,13 +73,13 @@ wire [WIDTH_MEM-1:0] dcache_addr;
 // wire memory
 integer j;
 
-wire comp_saq, comp_laq;
+wire comp_saq, comp_saq_D, comp_laq;
 wire                wb_type;
 
 reg we_rf;
 
-reg                laq_S;
-reg [WIDTH_LQ-1:0] laq_S_addr;
+wire                laq_setS;
+wire [WIDTH_LQ-1:0] laq_addrS;
 
 // wire writeback
 wire       [32-1:0] sdq_data;
@@ -106,20 +103,26 @@ assign { val, uop, tag, brmask, rd, func, imm, op2, op1 } = instr;
 always @(*)
 begin
 	// decoder
-	case(uop)
-		7'b0000011: FMT = IT;
-		7'b0100011: FMT = ST;
-		default:    FMT = OT;
+	case (uop)
+	7'b0000011: FMT = IT;
+	7'b0100011: FMT = ST;
+	default:    FMT = OT;
 	endcase
-	if (&(~val))
-		FMT = OT;
 
-	vali = |val;
-	vali = FMT == ST && killf(brmask, i_brkill) ? 1'b0 : vali;
+	val_wu = &(~val);
+	if (val_wu) begin
+		case ({ saq_wkup_val, laq_wkup_val })
+		2'b00: FMT = OT;
+		2'b01: FMT = IT;
+		2'b10: FMT = ST;
+		2'b11: FMT = IT;
+		endcase
+	end
 
+	// only input data;
 	we_saq = val[0] & FMT[1];
 	we_sdq = val[1] & FMT[1];
-	we_laq = FMT[0];
+	we_laq = val[0] & FMT[0];
 end
 
 // address calculation
@@ -127,7 +130,7 @@ assign naddr = op1[WIDTH_MEM-1:0] + imm[WIDTH_MEM-1:0];
 
 mux2in1  mux_lsq(qaddr, FMT[0], saddr, laddr);
 defparam mux_lsq.WIDTH = WIDTH_MEM;
-mux2in1  mux_vaddr(vaddr, 1'b0, naddr, qaddr);
+mux2in1  mux_vaddr(vaddr, val_wu, naddr, qaddr);
 defparam mux_vaddr.WIDTH = WIDTH_MEM;
 
 // TLB
@@ -138,10 +141,11 @@ assign TLBms = 1'b0;
 mux3in1  mux_dcache_addr(dcache_addr, 2'b0, paddr, saddr, laddr);
 defparam mux_dcache_addr.WIDTH = WIDTH_MEM;
 
-SAQ m_SAQ(.o_entries (entries_saq),  // entries_saq all entries
+assign saddr        = { WIDTH_MEM{1'b1} };
+assign saq_wkup_val = 1'b0;
+SAQ m_SAQ(.o_cells   (cells_saq),  // cells_saq all entries
           .o_entry   (),
           // ring buffer ports
-          .o_tail    (saq_tail),
           .o_empty   (),
           .o_overflow(),
           .i_re      (1'b0),
@@ -151,12 +155,12 @@ SAQ m_SAQ(.o_entries (entries_saq),  // entries_saq all entries
           .i_val     (1'b1),
           .i_tag     (tag),
           // addr
-          .i_weV     (we_saq),
-          .i_waddrV  (saq_tail),
+          .i_weV     (1'b0),
+          .i_waddrV  (),
           .i_addr    (paddr),
           .i_V       (TLBms),  // V set when TLB miss
           // data availability
-          .i_weD     (saq_weD),
+          .i_setD    (saq_setD),
           .i_waddrD  (saq_waddrD),
           // clk
           .i_rst_n   (i_rst_n),
@@ -165,30 +169,32 @@ defparam m_SAQ.WIDTH_TAG  = WIDTH_TAG;
 defparam m_SAQ.WIDTH_ADDR = WIDTH_MEM;
 defparam m_SAQ.WIDTH      = WIDTH_SQ;
 
-LAQ m_LAQ(.o_entries  (entries_laq),  // all entries
+LAQ m_LAQ(.o_cells    (cells_laq),  // all entries
           .o_entry    (),
-          .o_wkup_addr(),
-          .o_wkup_val (),
+          .o_wkup_addr(laddr),
+          .o_wkup_val (laq_wkup_val),
           // ring buffer
-          .o_tail    (laq_tail),
           .o_empty   (),
           .o_overflow(),
           .i_re      (1'b0),
-          .i_we      (we_laq),
           // input data for the table
+          .i_we      (we_laq),
           .i_val     (1'b0),
           .i_rd      (rd),
           .i_tag     (tag),
           // addr
-          .i_weV     (we_laq),
-          .i_waddrV  (laq_tail),
+          .i_weV     (1'b0),
+          .i_waddrV  (),
           .i_addr    (paddr),
           .i_V       (TLBms),  // V set when TLB miss
           // set/reset flags
-          .i_weS     (laq_S),
-          .i_waddrS  (laq_S_addr),
+          .i_setS    (laq_setS),
+          .i_waddrS  (laq_addrS),
           .i_weM     (1'b0),
           .i_waddrM  (),
+          .i_M       (),
+          // read wake up
+          .i_r_wu    (1'b0),
           .i_rst_n   (i_rst_n),
           .i_clk     (i_clk));
 defparam m_LAQ.WIDTH_REG  = WIDTH_REG;
@@ -201,21 +207,22 @@ defparam m_LAQ.WIDTH      = WIDTH_LQ;
  * addr
  * tag
  *
+ * valid instruction
  * write enable data
  * data
- *
- * valid instruction
- * destination register(rd)
  */
 
 //DCache
-register r_dc_addr(dcache_i_addr, 1'b1, dcache_addr, i_rst_n, i_clk);
+register r_dc_addr(dcache_i_addr, ~TLBms, dcache_addr, i_rst_n, i_clk);
 defparam r_dc_addr.WIDTH = WIDTH_MEM;
-register r_dc_data(dcache_i_data, 1'b1,         op2, i_rst_n, i_clk);
+register r_dc_data(dcache_i_data,   1'b1,         op2, i_rst_n, i_clk);
 defparam r_dc_data.WIDTH = 32;
-register r_dc_wren(dcache_i_we,   1'b1,      we_sdq, i_rst_n, i_clk);
+register r_dc_wren(dcache_i_we,     1'b1,      we_sdq, i_rst_n, i_clk);
 defparam r_dc_wren.WIDTH = 1;
 assign dcache_i_kill = dcache_kill;
+
+register #(1) r_ent_val(ent_val, 1'b1, val[0], i_rst_n, i_clk);
+register #(1) r_ent_we (ent_we,  1'b1, val[1], i_rst_n, i_clk);
 
 register r_ent_type(ent_type, 1'b1, FMT[1], i_rst_n, i_clk);
 defparam r_ent_type.WIDTH = 1;
@@ -224,30 +231,28 @@ defparam r_ent_addr.WIDTH = WIDTH_MEM;
 register r_ent_tag (ent_tag,  1'b1, tag,    i_rst_n, i_clk);
 defparam r_ent_tag.WIDTH = WIDTH_TAG;
 
-register #(1)  r_ent_we  (ent_we,   1'b1,   val[1], i_rst_n, i_clk);
-register #(32) r_ent_data(ent_data, val[0], op2,    i_rst_n, i_clk);
-
-register r_ent_val(ent_val, 1'b1, FMT[0], i_rst_n, i_clk);
-defparam r_ent_val.WIDTH = 1;
-register r_ent_rd(ent_rd, 1'b1, rd, i_rst_n, i_clk);
-defparam r_ent_rd.WIDTH = WIDTH_REG;
-
 /*
  * Memory stage
  */
 
+//mux2in1  mux_addr(addr, val_wu, ent_addr, laddr);
+//defparam mux_addr.WIDTH = WIDTH_MEM;
+
 wire [WIDTH_REG-1:0] comp_rd;
-wire [m_comp.DATA_ENT-1:0] entry;
 wire [WIDTH_SQ-1:0]  saq_addr;
-assign entry = { ent_type, ent_addr, ent_tag };
+wire [WIDTH_SQ-1:0]  saq_addr_D;
+wire [WIDTH_LQ-1:0]  laq_addr;
 
 comparator m_comp(.o_comp_saq (comp_saq),
-                  .o_comp_laq (comp_laq),
                   .o_saq_addr (saq_addr),
+                  .o_comp_saq_D (comp_saq_D),
+                  .o_saq_addr_D (saq_addr_D),
+                  .o_comp_laq (comp_laq),
+                  .o_laq_addr (laq_addr),
                   .o_rd       (comp_rd),
-                  .i_entry    (entry),
-                  .entries_laq(entries_laq),
-                  .entries_saq(entries_saq));
+                  .i_addr     (ent_addr),
+                  .i_cells_laq(cells_laq),
+                  .i_cells_saq(cells_saq));
 defparam m_comp.WIDTH_SAQ  = WIDTH_SQ;
 defparam m_comp.WIDTH_LAQ  = WIDTH_LQ;
 //defparam m_comp.SIZE_SAQ = 2 ** WIDTH_SAQ;
@@ -255,21 +260,20 @@ defparam m_comp.WIDTH_LAQ  = WIDTH_LQ;
 defparam m_comp.WIDTH_ADDR = WIDTH_MEM;
 defparam m_comp.WIDTH_REG  = WIDTH_REG;
 defparam m_comp.WIDTH_TAG  = WIDTH_TAG;
-//defparam m_comp.DATA_ENT = 1 + 32 + WIDTH_TAG;
 //defparam m_comp.DATA_SAQ = 4 + 32 + WIDTH_TAG;
 //defparam m_comp.DATA_LAQ = 4 + 32 + WIDTH_REG + WIDTH_TAG;
 
-assign saq_weD = ent_we;
-assign saq_waddrD = saq_addr;
+assign saq_setD   = ent_we & comp_saq_D;
+assign saq_waddrD = saq_addr_D;
+assign laq_setS   = ~ent_type & ent_val &  comp_saq;
+assign laq_addrS  = laq_addr;
 always @(*)
 begin
 	if (ent_type) begin  // Store type
 		we_rf = 1'b0;
 		dcache_kill = killf(ent_tag, i_brkill);
 	end else begin  // Load type
-		we_rf      = ent_val && !comp_saq;
-		laq_S      = ent_val &&  comp_saq;
-		laq_S_addr = 1;
+		we_rf      = ent_val & !comp_saq & killf(ent_tag, i_brkill);
 		dcache_kill = ent_val & comp_saq | killf(ent_tag, i_brkill);
 	end
 end
@@ -285,15 +289,16 @@ end
  * valid instruction
  * destination register(rd)
  */
-register #(1)  r_wb_type(wb_type, 1'b1, ent_type, i_rst_n, i_clk);
-register r_sdq_addr(sdq_addr,  ent_we,  saq_addr, i_rst_n, i_clk);
-defparam r_sdq_addr.WIDTH = WIDTH_SQ;
-register #(1)  r_sdq_we  (sdq_we,    1'b1,   ent_we,   i_rst_n, i_clk);
-register #(32) r_sdq_data(sdq_wdata, ent_we, ent_data, i_rst_n, i_clk);
+register #(1)  r_wb_type (wb_type,   1'b1,   ent_type, i_rst_n, i_clk);
+register       r_sdq_addr(sdq_addr,  ent_we, saq_addr, i_rst_n, i_clk);
+defparam       r_sdq_addr.WIDTH = WIDTH_SQ;
 
-register #(1) r_pipeO_VALI(o_val,  1'b1, we_rf,  i_rst_n, i_clk);
-register      r_pipeO_ADDR(o_addr, 1'b1, ent_rd, i_rst_n, i_clk);
-defparam r_pipeO_ADDR.WIDTH = WIDTH_REG;
+register #(1)  r_sdq_we  (sdq_we,    1'b1,   ent_we,        i_rst_n, i_clk);
+register #(32) r_sdq_data(sdq_wdata, 1'b1,   dcache_i_data, i_rst_n, i_clk);
+
+register #(1) r_pipeO_VAL(o_val,  1'b1, we_rf,   i_rst_n, i_clk);
+register      r_pipeO_RD (o_addr, 1'b1, comp_rd, i_rst_n, i_clk);
+defparam      r_pipeO_RD.WIDTH = WIDTH_REG;
 
 /*
  * Writeback stage

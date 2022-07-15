@@ -3,11 +3,10 @@ module SAQ #(parameter WIDTH_TAG = 5,
                        WIDTH_ADDR = 32,
                        WIDTH = 4, SIZE = 2 ** WIDTH,
                        WIDTH_DATA = 4 + WIDTH_ADDR + WIDTH_TAG)
-           (output [WIDTH_DATA * SIZE - 1:0] o_entries,
+           (output [WIDTH_DATA * SIZE - 1:0] o_cells,
             output [WIDTH_DATA - 1:0]        o_entry,
             // ring buffer
             output                 o_empty, o_overflow,
-            output [WIDTH-1:0]     o_tail,
             input                  i_re,
             input                  i_we,
             // input
@@ -20,7 +19,7 @@ module SAQ #(parameter WIDTH_TAG = 5,
             input [WIDTH_ADDR-1:0] i_addr,
             input                  i_V,
             // data availability
-            input                  i_weD,
+            input                  i_setD,
             input [WIDTH-1:0]      i_waddrD,
             input                  i_rst_n, i_clk);
 
@@ -39,7 +38,6 @@ reg                  D   [0:SIZE-1];
 reg [WIDTH_TAG-1:0]  tag [0:SIZE-1];
 
 // output
-assign o_tail     = tail;
 assign o_empty    = comp & ~overr;
 assign o_overflow = comp & overr;
 
@@ -80,10 +78,12 @@ begin
 		end
 	end else begin
 		if (i_we) begin
-			A   [i_waddrV] <= 1'b1;
-			val [i_waddrV] <= i_val;
-			D   [i_waddrV] <= 1'b0;
-			tag [i_waddrV] <= i_tag;
+			A   [tail] <= 1'b1;
+			val [tail] <= i_val;
+			addr[tail] <= i_addr;
+			V   [tail] <= i_V;
+			D   [tail] <= 1'b0;
+			tag [tail] <= i_tag;
 		end
 
 		if (i_weV) begin
@@ -91,7 +91,7 @@ begin
 			V   [i_waddrV] <= i_V;
 		end
 
-		if (i_weD) begin
+		if (i_setD) begin
 			D   [i_waddrD] <= 1'b1;
 		end
 
@@ -113,7 +113,7 @@ generate
 	genvar i;
 
 	for (i = 0; i < SIZE; i = i + 1) begin
-		assign o_entries[(i+1)*WIDTH_DATA-1:i*WIDTH_DATA] = {
+		assign o_cells[(i+1)*WIDTH_DATA-1:i*WIDTH_DATA] = {
 			A   [i],
 			val [i],
 			addr[i],
