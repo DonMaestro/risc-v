@@ -492,7 +492,8 @@ imm4 m_func_imm(.o_rdata0({ UOPCode[0], Func_Imm[0] }),
                 .i_wdata3({ uoprg1[3], funcrg1[3], immrg1[3] }),
                 .i_clk(clk));
 defparam m_func_imm.WIDTH = 7 + 32 + 10;
-defparam m_func_imm.SIZE  = 32;
+defparam m_func_imm.WIDTH_ADDR = 5;
+//defparam m_func_imm.SIZE  = 32;
 
 // register
 regfile4in8 m_regfile(.o_rdata0(DPS[0]),  .o_rdata1(DPS[1]),

@@ -1,6 +1,6 @@
 module executeBR #(parameter WIDTH_BRM = 4, WIDTH_REG = 7,
                              WIDTH = 1 + 7 + WIDTH_BRM + WIDTH_REG + 10 + 4*32)
-                 (output [$pow(2, WIDTH_BRM)-1:0] o_brkill,
+                 (output [(2 ** WIDTH_BRM)-1:0] o_brkill,
                   output [WIDTH_REG-1:0]  o_addr,
                   output [31:0]           o_data,
                   output [32+WIDTH_REG:0] o_bypass,    // { 1, WIDTH_PRD, 32 }
@@ -10,7 +10,7 @@ module executeBR #(parameter WIDTH_BRM = 4, WIDTH_REG = 7,
                   input  [WIDTH-1:0]      i_instr,
                   input  [31:0]           i_PCNext,
                   input  [WIDTH_BRM-1:0]  i_brmask,
-                  input  [$pow(2, WIDTH_BRM)-1:0] i_brkill,
+                  input  [(2 ** WIDTH_BRM)-1:0] i_brkill,
                   input                   i_rst_n, i_clk);
 
 `include "src/killf.v"
@@ -38,7 +38,7 @@ wire [31:0] PC_new, rdDt;
 
 wire comp, killEn;
 reg valOut;
-reg [$pow(2, WIDTH_BRM)-1:0] brkill;
+reg [(2 ** WIDTH_BRM)-1:0] brkill;
 
 register #(32) r_pipeI_PCN(PCNext, 1'b1, i_PCNext, i_rst_n, i_clk);
 register r_pipeI(instr, 1'b1, i_instr, i_rst_n, i_clk);
@@ -75,7 +75,7 @@ always @(*)
 begin
 	brkill = { WIDTH_BRM{1'b0} };
 	if (killEn) begin
-		for (i = 0; i < $pow(2, WIDTH_BRM); i = i + 1) begin
+		for (i = 0; i < 2 ** WIDTH_BRM; i = i + 1) begin
 			if (brmask < brmask_new) begin
 				if (brmask < i && i <= brmask_new)
 					brkill[i] = 1'b1;
@@ -116,7 +116,7 @@ register #( 1) r_pipeO_VALI(o_valid,  1'b1,   valOut, i_rst_n, i_clk);
 register       r_pipeO_ADDR(o_addr,   valOut, rd,     i_rst_n, i_clk);
 register #(32) r_pipeO_DATA(o_data,   valOut, rdDt,   i_rst_n, i_clk);
 register #( 1) r_pipeO_WERD(o_we,     1'b1,   valOut, i_rst_n, i_clk);
-defparam r_pipeO_MASK.WIDTH = $pow(2, WIDTH_BRM);
+defparam r_pipeO_MASK.WIDTH = 2 ** WIDTH_BRM;
 defparam r_pipeO_ADDR.WIDTH = WIDTH_REG;
 
 endmodule

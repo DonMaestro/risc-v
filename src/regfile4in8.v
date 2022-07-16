@@ -1,4 +1,4 @@
-module regfile4in8 #(WIDTH = 5)
+module regfile4in8 #(parameter WIDTH = 5)
                    (output [31:0]      o_rdata0, o_rdata1, o_rdata2, o_rdata3,
                     output [31:0]      o_rdata4, o_rdata5, o_rdata6, o_rdata7,
                     input  [WIDTH-1:0] i_raddr0, i_raddr1, i_raddr2, i_raddr3,
