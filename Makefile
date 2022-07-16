@@ -6,10 +6,10 @@ SOURCES_TEST = $(shell echo Test/*.sv)
 TARGET=core
 OUTPUT_DIR=Debug
 OUTPUT_NAME=core.out
-CFLAG=
-#SFLAG=-mrelax -al -march=rv32if -mabi=ilp32d
+#SFLAG=-mrelax -al -march=rv32i -mabi=ilp32
 SFLAG=
 #CFLAG=-fomit-frame-pointer -ftree-coalesce-vars -funit-at-a-time
+CFLAG=
 
 .PHONY: disassemble
 
@@ -18,7 +18,7 @@ all: build
 
 build: $(SOURCES_CORE)
 	mkdir -p ./Debug
-	iverilog -o ${OUTPUT_DIR}/${OUTPUT_NAME} ${SOURCES_TB} ${SOURCES_CORE}
+	iverilog -o ${OUTPUT_DIR}/${OUTPUT_NAME} ${SOURCES_TB}
 
 wave: build
 	vvp ${OUTPUT_DIR}/${OUTPUT_NAME}
@@ -29,20 +29,30 @@ test_build:
 	#iverilog -o ${TARGET}.out ${TEST_DIR}/tb_${TARGET}.v
 
 test_simulation: test_build
-	vsim -c tb_${TARGET}
+	mkdir -p ./Debug
+	vsim -c -do compile.do tb_${TARGET}
 	#vvp ${TARGET}.out
+
+uvm_test:
+	mkdir -p ./Debug
+	vlog +incdir+${UVM_HOME}/src ${UVM_HOME}/src/uvm.sv Test/uvm.sv
+	vsim -c -sv_lib ${UVM_HOME}/lib/uvm_dpi work.top_uvm -do "run -all"
 
 cc:
 	# compile _start
-	riscv32-elf-as ${SFLAG} _start.s -o _start.o
+	riscv64-elf-as ${SFLAG} _start.s -o _start.o
 	# compile main
-	riscv32-unknown-elf-gcc ${CFLAG} -S -o main.s main.c
-	riscv32-elf-as ${SFLAG} main.s -o main.o
+	riscv64-elf-gcc ${CFLAG} -S -march=rv32i -mabi=ilp32 -o main.s main.c
+	riscv64-elf-as ${SFLAG} main.s -o main.o
 	# link
 	riscv32-elf-ld -Ttext 0x00 -o main _start.o main.o
 	# conver
 	# riscv32-elf-objcopy -O binary main
 	#../../elfbin/elfbin -f main -o rom.dat
+
+#riscv32-elf-as ${SFLAG} _start.s -o _start.o
+#riscv32-unknown-elf-gcc ${CFLAG} -S -o main.s main.c
+#riscv32-elf-as ${SFLAG} main.s -o main.o
 
 disassemble:
 	riscv32-elf-gdb main
@@ -51,3 +61,4 @@ clean:
 	rm main *.o  
 	rm -rf work  
 	rm transcript   
+
