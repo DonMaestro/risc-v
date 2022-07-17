@@ -1,6 +1,7 @@
 
 *.odt
 *~
+*.log
 
 # modelsim
 transcript
