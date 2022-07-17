@@ -30,13 +30,13 @@ test_build:
 
 test_simulation: test_build
 	mkdir -p ./Debug
-	vsim -c -do compile.do tb_${TARGET}
+	vsim -c tb_${TARGET}
 	#vvp ${TARGET}.out
 
 uvm_test:
 	mkdir -p ./Debug
-	vlog +incdir+${UVM_HOME}/src ${UVM_HOME}/src/uvm.sv Test/uvm.sv
-	vsim -c -sv_lib ${UVM_HOME}/lib/uvm_dpi work.top_uvm -do "run -all"
+	vlog +incdir+${UVM_HOME}/src ${UVM_HOME}/src/uvm.sv uvm/${TARGET}.sv
+	vsim +UVM_NO_RELNOTES -c -sv_lib ${UVM_HOME}/lib/uvm_dpi top -do "run -all"
 
 cc:
 	# compile _start
