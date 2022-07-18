@@ -17,7 +17,6 @@ class env extends uvm_env;
 		super.build_phase(phase);
 		agent = ringbuf_agent::type_id::create("agent", this);
 		//scb   = scoreboard::type_id::create("scb", this);
-		`uvm_info("ID", "ENV_BUILD_PHASE", UVM_MEDIUM);
 	endfunction
 
 //	virtual function void connect_phase(uvm_phase phase);

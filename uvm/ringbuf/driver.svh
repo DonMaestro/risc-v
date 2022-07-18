@@ -3,7 +3,7 @@ class ringbuf_driver extends uvm_driver #(ringbuf_seq_item);
 
 	`uvm_component_utils(ringbuf_driver)
 
-	virtual intf vif;
+	virtual ringbuf_intf vif;
 
 	function new(string name, uvm_component parent);
 		super.new(name, parent);
@@ -11,7 +11,7 @@ class ringbuf_driver extends uvm_driver #(ringbuf_seq_item);
 
 	function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
-		if (!uvm_config_db#(virtual intf)::get(this, "", "viff", vif))
+		if (!uvm_config_db#(virtual ringbuf_intf)::get(this, "", "viff", vif))
 			`uvm_fatal("DRV", "Could not get vif");
 		//uvm_config_db#(virtual intf #(.WIDTH(8)))::set(this, "e0.a0.*", "vif", vif)
 	endfunction

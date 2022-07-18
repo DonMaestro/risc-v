@@ -5,25 +5,16 @@
 `define WIDTH 4
 
 `include "uvm_macros.svh"
-`include "uvm/ringbuf/_pkg.svh"
-
-interface intf;
-	logic [4-1:0] rdata;
-	logic             empty;
-	logic             overflow;
-	logic [4-1:0] wdata;
-	logic             re, we;
-	logic             rst, clk;
-endinterface
+`include "uvm/ringbuf/pkg.svh"
 
 module top;
 import uvm_pkg::*;
-import tb_pkg::*;
+import ringbuf_pkg::*;
 
 //localparam WIDTH = 8;
 logic rst, clk;
 
-intf ff();
+ringbuf_intf ff();
 
 // DUT
 ringbuf DUT(.o_data     (ff.rdata),
@@ -54,7 +45,7 @@ end
 
 initial
 begin
-	uvm_config_db#(virtual intf)::set(null, "*", "viff", ff);
+	uvm_config_db#(virtual ringbuf_intf)::set(null, "*", "viff", ff);
 	run_test("test");
 end
 
