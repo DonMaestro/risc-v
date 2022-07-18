@@ -1,8 +1,8 @@
 
-class scoreboard extends uvm_scoreboard;
+class ringbuf_scoreboard extends uvm_scoreboard;
 
-	`uvm_component_utils(scoreboard)
-	uvm_analysis_imp #(ringbuf_seq_item, scoreboard) item_collected_export;
+	`uvm_component_utils(ringbuf_scoreboard)
+	uvm_analysis_imp #(ringbuf_seq_item, ringbuf_scoreboard) item_analysis_imp;
 
 	function new(string name, uvm_component parent);
 		super.new(name, parent);
@@ -10,12 +10,12 @@ class scoreboard extends uvm_scoreboard;
 
 	virtual function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
-		`uvm_info("ID", "SCR_BUILD_PHASE", UVM_MEDIUM);
-		item_collected_export = new("item_collected_export", this);
+		item_analysis_imp = new("item_analysis_imp", this);
 	endfunction
 
-	function void write(ringbuf_seq_item pkt);
-		pkt.print();
+	virtual function write(ringbuf_seq_item gg);
+		//pkt.print();
+		`uvm_warning(get_type_name(), "GG")
 	endfunction
 
 	virtual task run_phase(uvm_phase phase);
@@ -23,5 +23,4 @@ class scoreboard extends uvm_scoreboard;
 	endtask
 
 endclass
-
 

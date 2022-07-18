@@ -3,7 +3,7 @@ class ringbuf_seq_item extends uvm_sequence_item;
 
 	`uvm_object_utils(ringbuf_seq_item)
 
-	rand logic [4-1:0] wdata;
+	rand logic [WIDTH-1:0] wdata;
 	rand logic              re, we;
 	     logic              rst, clk;
 
@@ -15,7 +15,7 @@ class ringbuf_seq_item extends uvm_sequence_item;
 	`uvm_object_utils_end
 	*/
 
-	function new(string name = "");
+	function new(string name = "ringbuf_seq_item");
 		super.new(name);
 	endfunction
 
@@ -26,6 +26,8 @@ class ringbuf_sequence extends uvm_sequence#(ringbuf_seq_item);
 
 	`uvm_object_utils(ringbuf_sequence)
 
+	int unsigned n_times = 10;
+
 	function new(string name = "");
 		super.new(name);
 	endfunction
@@ -35,12 +37,10 @@ class ringbuf_sequence extends uvm_sequence#(ringbuf_seq_item);
 	// task pre_body
 	// task post_body
 	task body;
-		repeat(8) begin
+		repeat (n_times) begin
+			`uvm_warning(get_type_name(), "NEW DATA")
 			req = ringbuf_seq_item::type_id::create("req");
 			start_item(req);
-			//req = ringbuf_seq_item::type_id::create("req");
-			//`uvm_info("BASE_SEQ", $sformatf("Starting body of %s", this.get_name()), UVM_MEDIUM);
-			`uvm_warning("BASE_SEQ", "Starting body");
 			//`uvm_create(req);
 			req.wdata = $urandom;
 			req.we = $urandom;
