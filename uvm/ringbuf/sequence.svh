@@ -26,19 +26,16 @@ class ringbuf_sequence extends uvm_sequence#(ringbuf_seq_item);
 
 	`uvm_object_utils(ringbuf_sequence)
 
-	int unsigned n_times = 10;
+	int unsigned n_times = 600;
 
-	function new(string name = "");
+	function new(string name = "ringbuf_sequence");
 		super.new(name);
 	endfunction
 
-	//`uvm_declare_p_sequencer(ringbuf_sequencer)
-
 	// task pre_body
 	// task post_body
-	task body;
+	virtual task body;
 		repeat (n_times) begin
-			`uvm_warning(get_type_name(), "NEW DATA")
 			req = ringbuf_seq_item::type_id::create("req");
 			start_item(req);
 			//`uvm_create(req);

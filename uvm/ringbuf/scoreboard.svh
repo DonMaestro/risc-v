@@ -13,9 +13,8 @@ class ringbuf_scoreboard extends uvm_scoreboard;
 		item_analysis_imp = new("item_analysis_imp", this);
 	endfunction
 
-	virtual function write(ringbuf_seq_item gg);
+	virtual function write(ringbuf_seq_item pkt);
 		//pkt.print();
-		`uvm_warning(get_type_name(), "GG")
 	endfunction
 
 	virtual task run_phase(uvm_phase phase);

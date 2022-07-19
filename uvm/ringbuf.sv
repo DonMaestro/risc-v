@@ -12,7 +12,7 @@ import ringbuf_pkg::*;
 //localparam WIDTH = 8;
 logic rst, clk;
 
-ringbuf_intf #(.WIDTH(ringbuf_pkg::WIDTH)) intf(rst, clk);
+ringbuf_intf #(.WIDTH(WIDTH)) intf(rst, clk);
 
 // DUT
 ringbuf DUT(.o_data     (intf.rdata),
@@ -23,7 +23,7 @@ ringbuf DUT(.o_data     (intf.rdata),
             .i_we       (intf.we),
             .i_rst_n    (intf.rst),
             .i_clk      (intf.clk));
-defparam DUT.WIDTH = ringbuf_pkg::WIDTH;
+defparam DUT.WIDTH = WIDTH;
 defparam DUT.SIZE = 8;
 
 initial
@@ -36,7 +36,7 @@ end
 
 initial
 begin
-	uvm_config_db#(virtual ringbuf_intf #(.WIDTH(ringbuf_pkg::WIDTH)))::set(null, "*", "vif", intf);
+	uvm_config_db#(virtual ringbuf_intf #(.WIDTH(WIDTH)))::set(null, "*", "vif", intf);
 	run_test("test");
 end
 
@@ -44,7 +44,6 @@ initial
 begin
 	$dumpfile("Debug/ringbuf.vcd");
 	$dumpvars;
-	#1000 $finish;
 end
 
 initial forever #5 clk = ~clk;

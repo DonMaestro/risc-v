@@ -12,7 +12,7 @@ class ringbuf_driver extends uvm_driver #(ringbuf_seq_item);
 	function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
 		if (!uvm_config_db#(virtual ringbuf_intf #(.WIDTH(WIDTH)))::get(this, "", "vif", vif))
-			`uvm_fatal("DRV", "Could not get vif")
+			`uvm_fatal(get_type_name(), "Could not get vif")
 	endfunction
 
 	task run_phase(uvm_phase phase);
@@ -21,7 +21,6 @@ class ringbuf_driver extends uvm_driver #(ringbuf_seq_item);
 //		#1
 //		vif.rst = 1'b1;
 		forever begin
-			`uvm_warning(get_type_name(), "NEW DATA")
 			seq_item_port.get_next_item(req);
 			vif.wdata = req.wdata;
 			vif.we    = req.we;
