@@ -14,16 +14,18 @@ class test extends uvm_test;
 		env = ringbuf_env::type_id::create("env", this);
 	endfunction
 
+	/*
 	task run_phase(uvm_phase phase);
 		phase.raise_objection(this);
 		#10;
 		`uvm_info("ID", "TEST_RUN", UVM_MEDIUM)
 		phase.drop_objection(this);
 	endtask
+	*/
 
-//	function void end_of_elaboration();
-//		print();
-//	endfunction
+	function void end_of_elaboration();
+		print();
+	endfunction
 
 endclass
 

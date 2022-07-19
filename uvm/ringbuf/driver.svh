@@ -29,8 +29,8 @@ class ringbuf_driver extends uvm_driver #(ringbuf_seq_item);
 				vif.re = 1'b0;
 			if (vif.overflow)
 				vif.we = 1'b0;
-			@(posedge vif.clk);
 			seq_item_port.item_done();
+			@(posedge vif.clk);
 		end
 	endtask
 

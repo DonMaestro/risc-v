@@ -4,8 +4,10 @@ class ringbuf_seq_item extends uvm_sequence_item;
 	`uvm_object_utils(ringbuf_seq_item)
 
 	rand logic [WIDTH-1:0] wdata;
-	rand logic              re, we;
-	     logic              rst, clk;
+	rand logic             re, we;
+	     logic             rst, clk;
+	     logic [WIDTH-1:0] rdata;
+	     logic             empty, overflow;
 
 	/*
 	`uvm_object_utils_begin(ringbuf_seq_item)

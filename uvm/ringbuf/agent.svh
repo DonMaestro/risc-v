@@ -19,7 +19,8 @@ class ringbuf_agent extends uvm_agent;
 		monitor = ringbuf_monitor::type_id::create("monitor", this);
 		if(get_is_active() == UVM_ACTIVE) begin
 			driver = ringbuf_driver::type_id::create("driver", this);
-			sequencer = uvm_sequencer#(ringbuf_seq_item)::type_id::create("sequencer", this);
+			sequencer = uvm_sequencer#(ringbuf_seq_item)
+			::type_id::create("sequencer", this);
 		end
 	endfunction
 
@@ -27,7 +28,7 @@ class ringbuf_agent extends uvm_agent;
 		super.connect_phase(phase);
 		if (get_is_active() == UVM_ACTIVE) begin
 			driver.seq_item_port.connect(sequencer.seq_item_export);
-			monitor.aport.connect(aport);
+			//monitor.aport.connect(aport);
 		end
 	endfunction
 
