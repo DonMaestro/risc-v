@@ -1,6 +1,6 @@
 
 class ringbuf_monitor extends uvm_monitor;
-	
+
 	`uvm_component_utils(ringbuf_monitor)
 
 	uvm_analysis_port #(ringbuf_seq_item) aport;
@@ -23,16 +23,17 @@ class ringbuf_monitor extends uvm_monitor;
 
 	virtual task run_phase(uvm_phase phase);
 		super.run_phase(phase);
-		//ringbuf_seq_item tx;
 		//`uvm_warning(get_type_name(), "RUN PHASE")
 		forever
 		begin
 			@(posedge vif.clk);
 			tx = ringbuf_seq_item::type_id::create("tx", this);
-			tx.wdata = vif.wdata;
-			tx.we    = vif.we;
-			tx.rdata = vif.rdata;
-			tx.re    = vif.re;
+			tx.wdata    = vif.wdata;
+			tx.we       = vif.we;
+			tx.rdata    = vif.rdata;
+			tx.re       = vif.re;
+			tx.empty    = vif.empty;
+			tx.overflow = vif.overflow;
 			aport.write(tx);
 		end
 	endtask

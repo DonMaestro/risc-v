@@ -8,7 +8,7 @@ class ringbuf_agent extends uvm_agent;
 	uvm_sequencer #(ringbuf_seq_item) sequencer;
 	ringbuf_driver    driver;
 	ringbuf_monitor   monitor;
-	
+
 	function new(string name = "ringbuf_agent", uvm_component parent = null);
 		super.new(name, parent);
 	endfunction
