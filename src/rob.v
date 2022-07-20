@@ -154,7 +154,8 @@ endfunction
 encoder m_encoder(.o_q(o_dis_tag),
                   .i_en(1'b1),
                   .i_d(tail));
-defparam m_encoder.SIZE = SIZE;
+defparam m_encoder.WIDTH = WIDTH_BANK;
+defparam m_encoder.SIZE  = SIZE;
 
 endmodule
 
