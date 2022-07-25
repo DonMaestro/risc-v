@@ -7,8 +7,8 @@ integer i;
 
 always @(*)
 begin
+	o_q = { WIDTH{1'b0} };
 	if (i_en) begin
-		o_q = { WIDTH{1'b0} };
 		for (i = 0; i < SIZE; i = i + 1)
 			if (i_d[i])
 				o_q = i[WIDTH-1:0];
