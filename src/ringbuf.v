@@ -15,7 +15,8 @@ wire [SIZE:0] head, tail;
 wire [SIZE-1:0] commit, we_data;
 
 wire comp;
-wire over, overr;
+reg  over;
+wire overr;
 
 wire [WIDTH-1:0] data[0:SIZE-1];
 
@@ -25,7 +26,18 @@ assign o_overflow = comp & overr;
 //assign overflow_before = |(head & (tail << 1));
 
 assign comp = |(head & tail);
-over p_over(over, overr, i_re, i_we);
+
+always @(overr, i_re, i_we)
+begin
+	case({overr, i_re, i_we})
+	3'b001 : over = 1'b1;
+	3'b100 : over = 1'b1;
+	3'b101 : over = 1'b1;
+	3'b111 : over = 1'b1;
+	default: over = 1'b0;
+	endcase
+end
+
 register #(1) r_we(overr, 1'b1, over, i_rst_n, i_clk);
 
 assign head[0] = head[SIZE];
@@ -62,22 +74,6 @@ generate
 endgenerate
 
 endmodule
-
-primitive over(q, state, r, w);
-	output q;
-	input state, r, w;
-	table
-	//      s r w : out
-		0 0 0 : 0;
-		0 0 1 : 1;
-		0 1 0 : 0;
-		0 1 1 : 0;
-		1 0 0 : 1;
-		1 0 1 : 1;
-		1 1 0 : 0;
-		1 1 1 : 1;
-	endtable
-endprimitive
 
 /**
  * slote
